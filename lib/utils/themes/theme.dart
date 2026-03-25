@@ -19,9 +19,9 @@ class TAppTheme {
     primaryColor: TColors.primary,
     scaffoldBackgroundColor: TColors.light,
     colorScheme: const ColorScheme.light(
-      primary: TColors.primary,
-      surface: TColors.cardLight,
-      error:   TColors.error,
+      primary:   TColors.primary,
+      surface:   TColors.cardLight,
+      error:     TColors.error,
     ),
     textTheme:           TTextTheme.lightTextTheme,
     appBarTheme:         TAppBarTheme.lightAppBarTheme,
@@ -35,37 +35,55 @@ class TAppTheme {
       backgroundColor: TColors.cardLight,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       titleTextStyle: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
         color: TColors.textPrimary,
         fontFamily: 'Poppins',
       ),
       contentTextStyle: const TextStyle(
-        fontSize: 13,
+        fontSize: 12,
         color: TColors.textSecondary,
         fontFamily: 'Poppins',
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: TColors.white,
-      hintStyle: const TextStyle(color: TColors.textHint, fontSize: 13),
+      fillColor: TColors.light,
+      hintStyle: const TextStyle(
+        color: TColors.textHint,
+        fontSize: 10,
+        fontFamily: 'Poppins',
+      ),
+      labelStyle: const TextStyle(
+        color: TColors.textHint,
+        fontSize: 10,
+        fontFamily: 'Poppins',
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.borderLight, width: 0.5),
+        borderSide: const BorderSide(
+          color: TColors.borderLight, width: 0.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.borderLight, width: 0.5),
+        borderSide: const BorderSide(
+          color: TColors.borderLight, width: 0.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.primary, width: 1.5),
+        borderSide: const BorderSide(
+          color: TColors.primary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: TColors.error, width: 1),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12, vertical: 9),
     ),
     cardTheme: CardThemeData(
       color: TColors.cardLight,
@@ -73,8 +91,47 @@ class TAppTheme {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: TColors.borderLight, width: 0.5),
+        side: const BorderSide(
+          color: TColors.borderLight, width: 0.5),
       ),
+    ),
+    listTileTheme: const ListTileThemeData(
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 12, vertical: 2),
+      dense: true,
+      minLeadingWidth: 0,
+    ),
+    dividerTheme: const DividerThemeData(
+      color: TColors.borderLight,
+      thickness: 0.5,
+      space: 0,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: TColors.cardLight,
+      selectedItemColor: TColors.primary,
+      unselectedItemColor: TColors.grey,
+      elevation: 0,
+      type: BottomNavigationBarType.fixed,
+      selectedLabelStyle: TextStyle(
+        fontSize: 7,
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w500,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 7,
+        fontFamily: 'Poppins',
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: TColors.textPrimary,
+      contentTextStyle: const TextStyle(
+        color: TColors.white,
+        fontSize: 12,
+        fontFamily: 'Poppins',
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12)),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 
@@ -85,9 +142,9 @@ class TAppTheme {
     primaryColor: TColors.primary,
     scaffoldBackgroundColor: TColors.dark,
     colorScheme: const ColorScheme.dark(
-      primary: TColors.primary,
-      surface: TColors.cardDark,
-      error:   TColors.error,
+      primary:   TColors.primary,
+      surface:   TColors.cardDark,
+      error:     TColors.error,
     ),
     textTheme:           TTextTheme.darkTextTheme,
     appBarTheme:         TAppBarTheme.darkAppBarTheme,
@@ -101,37 +158,55 @@ class TAppTheme {
       backgroundColor: TColors.cardDark,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
       ),
       titleTextStyle: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
         color: TColors.textWhite,
         fontFamily: 'Poppins',
       ),
       contentTextStyle: const TextStyle(
-        fontSize: 13,
+        fontSize: 12,
         color: TColors.grey,
         fontFamily: 'Poppins',
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: TColors.cardDark,
-      hintStyle: const TextStyle(color: TColors.grey, fontSize: 13),
+      fillColor: TColors.darkContainer,
+      hintStyle: const TextStyle(
+        color: TColors.grey,
+        fontSize: 10,
+        fontFamily: 'Poppins',
+      ),
+      labelStyle: const TextStyle(
+        color: TColors.grey,
+        fontSize: 10,
+        fontFamily: 'Poppins',
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.borderDark, width: 0.5),
+        borderSide: const BorderSide(
+          color: TColors.borderDark, width: 0.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.borderDark, width: 0.5),
+        borderSide: const BorderSide(
+          color: TColors.borderDark, width: 0.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: TColors.primary, width: 1.5),
+        borderSide: const BorderSide(
+          color: TColors.primary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: TColors.error, width: 1),
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12, vertical: 9),
     ),
     cardTheme: CardThemeData(
       color: TColors.cardDark,
@@ -139,8 +214,47 @@ class TAppTheme {
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: TColors.borderDark, width: 0.5),
+        side: const BorderSide(
+          color: TColors.borderDark, width: 0.5),
       ),
+    ),
+    listTileTheme: const ListTileThemeData(
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: 12, vertical: 2),
+      dense: true,
+      minLeadingWidth: 0,
+    ),
+    dividerTheme: const DividerThemeData(
+      color: TColors.borderDark,
+      thickness: 0.5,
+      space: 0,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: TColors.cardDark,
+      selectedItemColor: TColors.primary,
+      unselectedItemColor: TColors.grey,
+      elevation: 0,
+      type: BottomNavigationBarType.fixed,
+      selectedLabelStyle: TextStyle(
+        fontSize: 7,
+        fontFamily: 'Poppins',
+        fontWeight: FontWeight.w500,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontSize: 7,
+        fontFamily: 'Poppins',
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: TColors.cardDark,
+      contentTextStyle: const TextStyle(
+        color: TColors.textWhite,
+        fontSize: 12,
+        fontFamily: 'Poppins',
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12)),
+      behavior: SnackBarBehavior.floating,
     ),
   );
 }
