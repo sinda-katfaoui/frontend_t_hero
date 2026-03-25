@@ -1,7 +1,34 @@
+// ============================================================
+// SignalementDetailScreen — Citoyen Signalement Detail View
+// ============================================================
+// Shows full details of a single signalement for the citoyen.
+// Opened as a new route when tapping a signalement card.
+//
+// Displays:
+//   - Map placeholder with location name
+//   - Info card: category, location, citoyen, date, priority
+//   - Description text
+//   - AI analysis score + progress bar (if available)
+//   - Status timeline: created → assigned → resolved
+//
+// Design decisions:
+// - Red AppBar with status pill badge in actions
+// - Compact map at 80px — fits without scrolling
+// - Info rows in a white card with thin dividers
+// - Timeline uses colored dots + connecting lines
+// - All sections compact enough to fit one screen
+// - ScrollView kept for safety on small devices
+//
+// TODO: Connect to real data:
+//   - GET /signalements/GetSignalementById/:id
+//   - GET /analyseAI/GetAnalyseBySignalement/:id
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 class SignalementDetailScreen extends StatefulWidget {
+  // Signalement data passed from the parent list screen
   final Map<String, String> signalement;
 
   const SignalementDetailScreen({
@@ -17,30 +44,32 @@ class SignalementDetailScreen extends StatefulWidget {
 class _SignalementDetailScreenState
     extends State<SignalementDetailScreen> {
 
+  // ── Status Helpers ─────────────────────────────────────────
   Color _statusColor(String s) {
     switch (s) {
-      case 'EN_COURS':  return TColors.info;
-      case 'RESOLU':    return TColors.success;
-      default:          return TColors.warning;
+      case 'EN_COURS': return TColors.info;
+      case 'RESOLU':   return TColors.success;
+      default:         return TColors.warning;
     }
   }
 
   Color _statusBg(String s) {
     switch (s) {
-      case 'EN_COURS':  return TColors.infoLight;
-      case 'RESOLU':    return TColors.successLight;
-      default:          return TColors.warningLight;
+      case 'EN_COURS': return TColors.infoLight;
+      case 'RESOLU':   return TColors.successLight;
+      default:         return TColors.warningLight;
     }
   }
 
   String _statusLabel(String s) {
     switch (s) {
-      case 'EN_COURS':  return 'En cours';
-      case 'RESOLU':    return 'Résolu';
-      default:          return 'En attente';
+      case 'EN_COURS': return 'En cours';
+      case 'RESOLU':   return 'Résolu';
+      default:         return 'En attente';
     }
   }
 
+  // ── Priority Helpers ───────────────────────────────────────
   Color _priorityColor(String p) {
     switch (p) {
       case 'ELEVEE':  return TColors.error;
@@ -57,214 +86,107 @@ class _SignalementDetailScreenState
     }
   }
 
+  // ── AI Score Parser ────────────────────────────────────────
+  // Converts "80%" string to 0.8 double for progress bar
+  double _parseScore(String? score) {
+    if (score == null) return 0.5;
+    return (double.tryParse(
+      score.replaceAll('%', '')) ?? 50) / 100;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final s = widget.signalement;
-    final status   = s['status']   ?? 'EN_ATTENTE';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final s      = widget.signalement;
+    final status  = s['status']   ?? 'EN_ATTENTE';
     final priority = s['priority'] ?? 'FAIBLE';
 
     return Scaffold(
+      backgroundColor: isDark ? TColors.dark : TColors.light,
+
+      // ── AppBar with status badge ───────────────────────────
       appBar: AppBar(
-        title: const Text('Détail signalement'),
+        backgroundColor: TColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 16),
+          onPressed: () => Navigator.pop(context)),
+        title: const Text('Détail signalement',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Poppins',
+          )),
+        // Status pill badge in top right
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(
               horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _statusBg(status),
-              borderRadius: BorderRadius.circular(10)),
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Text(_statusLabel(status),
-              style: TextStyle(
-                fontSize: 11,
-                color: _statusColor(status),
-                fontWeight: FontWeight.w500))),
+              style: const TextStyle(
+                fontSize: 9,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'Poppins',
+              )),
+          ),
         ],
       ),
+
+      // ── Body ───────────────────────────────────────────────
+      // SingleChildScrollView kept for safety on small screens
       body: SingleChildScrollView(
         child: Column(children: [
-          // Map placeholder
-          Container(
-            height: 180,
-            color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF1A2A1A)
-              : const Color(0xFFE8F0E8),
-            child: Stack(children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.location_on,
-                      size: 40, color: TColors.primary),
-                    const SizedBox(height: 4),
-                    Text(s['localisation'] ?? 'Localisation',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: TColors.textHint,
-                        fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-          // Details
+
+          // ── Map Placeholder ────────────────────────────────
+          // Shows location name. Replace with GoogleMap later.
+          _buildMap(s['localisation'], isDark),
+
+          // ── All Detail Cards ────────────────────────────────
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(10),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Title
+
+                // Signalement title
                 Text(s['title'] ?? 'Signalement',
-                  style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 16),
-                // Info card
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(children: [
-                      _infoRow('Catégorie',
-                        s['cat'] ?? '—',
-                        Icons.category_outlined),
-                      const Divider(height: 20),
-                      _infoRow('Localisation',
-                        s['localisation'] ?? '—',
-                        Icons.place_outlined),
-                      const Divider(height: 20),
-                      _infoRow('Citoyen',
-                        s['citoyen'] ?? 'Amira Bouazizi',
-                        Icons.person_outline),
-                      const Divider(height: 20),
-                      _infoRow('Date',
-                        s['time'] ?? '—',
-                        Icons.calendar_today_outlined),
-                      const Divider(height: 20),
-                      Row(
-                        mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.flag_outlined,
-                              size: 18, color: TColors.grey),
-                            const SizedBox(width: 8),
-                            const Text('Priorité',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: TColors.textSecondary)),
-                          ]),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _priorityBg(priority),
-                              borderRadius:
-                                BorderRadius.circular(8)),
-                            child: Text(priority,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _priorityColor(priority),
-                                fontWeight: FontWeight.w500))),
-                        ],
-                      ),
-                      if (s['agent'] != null &&
-                          s['agent']!.isNotEmpty &&
-                          s['agent'] != '—') ...[
-                        const Divider(height: 20),
-                        _infoRow('Agent assigné',
-                          s['agent']!,
-                          Icons.engineering_outlined),
-                      ],
-                    ]),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Description
-                Text('Description',
-                  style: Theme.of(context).textTheme.titleSmall),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                      ? TColors.textWhite : TColors.textPrimary,
+                    fontFamily: 'Poppins',
+                  )),
+
                 const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      s['description'] ??
-                        'Aucune description disponible.',
-                      style: Theme.of(context).textTheme.bodyMedium),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // AI Analysis
+
+                // Info card — category, location, citoyen, date
+                _buildInfoCard(s, priority, isDark),
+
+                const SizedBox(height: 8),
+
+                // Description card
+                _buildDescriptionCard(s, isDark),
+
+                // AI Analysis card — only shown if data exists
                 if (s['aiScore'] != null) ...[
-                  Text('Analyse IA',
-                    style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(children: [
-                        Row(
-                          mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Score de confiance',
-                              style: TextStyle(fontSize: 13)),
-                            Text(s['aiScore']!,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: TColors.primary,
-                                fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: 0.8,
-                            backgroundColor: TColors.borderLight,
-                            color: TColors.primary,
-                            minHeight: 6)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Catégorie suggérée',
-                              style: TextStyle(fontSize: 13)),
-                            Text(s['aiCategorie'] ?? '—',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500)),
-                          ],
-                        ),
-                      ]),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  _buildAICard(s),
                 ],
-                // Status timeline
-                Text('Suivi',
-                  style: Theme.of(context).textTheme.titleSmall),
+
                 const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(children: [
-                      _timelineItem('Signalement créé',
-                        s['time'] ?? '—', true),
-                      _timelineItem('Pris en charge',
-                        s['agent'] != null &&
-                        s['agent'] != '—'
-                          ? 'Par ${s['agent']}'
-                          : 'En attente',
-                        s['agent'] != null &&
-                        s['agent'] != '—'),
-                      _timelineItem('Résolu',
-                        status == 'RESOLU'
-                          ? 'Problème résolu'
-                          : 'En cours de traitement',
-                        status == 'RESOLU',
-                        isLast: true),
-                    ]),
-                  ),
-                ),
+
+                // Timeline card — shows progress of signalement
+                _buildTimelineCard(s, status, isDark),
+
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -273,61 +195,390 @@ class _SignalementDetailScreenState
     );
   }
 
-  Widget _infoRow(String label, String value, IconData icon) {
+  // ── Map Placeholder ────────────────────────────────────────
+  // Compact at 80px with grid lines and location pin.
+  Widget _buildMap(String? location, bool isDark) {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        color: isDark
+          ? const Color(0xFF1A2A1A)
+          : const Color(0xFFE8F0E8),
+      ),
+      child: Stack(children: [
+        // Grid lines for map feel
+        CustomPaint(
+          size: const Size(double.infinity, 80),
+          painter: _GridPainter(isDark: isDark),
+        ),
+        // Location pin + address
+        Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.location_on,
+                size: 18, color: TColors.primary),
+              const SizedBox(width: 5),
+              Text(location ?? 'Localisation non définie',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: TColors.textHint,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                )),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Info Card ──────────────────────────────────────────────
+  // White card with key-value rows separated by thin dividers.
+  Widget _buildInfoCard(
+      Map<String, String> s, String priority, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? TColors.cardDark : TColors.cardLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: TColors.borderLight, width: 0.5),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12, vertical: 10),
+      child: Column(children: [
+        _infoRow('Catégorie',
+          s['cat'] ?? '—', Icons.category_outlined, isDark),
+        _thinDivider(),
+        _infoRow('Localisation',
+          s['localisation'] ?? '—', Icons.place_outlined, isDark),
+        _thinDivider(),
+        _infoRow('Citoyen',
+          s['citoyen'] ?? 'Amira Bouazizi',
+          Icons.person_outline, isDark),
+        _thinDivider(),
+        _infoRow('Date',
+          s['time'] ?? '—',
+          Icons.calendar_today_outlined, isDark),
+        _thinDivider(),
+
+        // Priority row uses a colored pill instead of text
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(children: [
+              const Icon(Icons.flag_outlined,
+                size: 14, color: TColors.grey),
+              const SizedBox(width: 7),
+              const Text('Priorité',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: TColors.textSecondary,
+                  fontFamily: 'Poppins',
+                )),
+            ]),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(
+                color: _priorityBg(priority),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(priority,
+                style: TextStyle(
+                  fontSize: 8,
+                  color: _priorityColor(priority),
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Poppins',
+                )),
+            ),
+          ],
+        ),
+
+        // Agent row — only shown if an agent is assigned
+        if (s['agent'] != null &&
+            s['agent']!.isNotEmpty &&
+            s['agent'] != '—') ...[
+          _thinDivider(),
+          _infoRow('Agent assigné',
+            s['agent']!, Icons.engineering_outlined, isDark),
+        ],
+      ]),
+    );
+  }
+
+  // ── Description Card ───────────────────────────────────────
+  Widget _buildDescriptionCard(
+      Map<String, String> s, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? TColors.cardDark : TColors.cardLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: TColors.borderLight, width: 0.5),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Description',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: TColors.textSecondary,
+              fontFamily: 'Poppins',
+            )),
+          const SizedBox(height: 5),
+          Text(
+            s['description'] ?? 'Aucune description disponible.',
+            style: TextStyle(
+              fontSize: 10,
+              color: isDark
+                ? TColors.textWhite : TColors.textPrimary,
+              fontFamily: 'Poppins',
+              height: 1.5,
+            )),
+        ],
+      ),
+    );
+  }
+
+  // ── AI Analysis Card ───────────────────────────────────────
+  // Shows confidence score with a progress bar + category.
+  Widget _buildAICard(Map<String, String> s) {
+    return Container(
+      decoration: BoxDecoration(
+        color: TColors.primaryLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: TColors.primary.withValues(alpha: 0.2),
+          width: 0.5),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(children: [
+
+        // Header row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Row(children: [
+              Icon(Icons.auto_awesome,
+                size: 13, color: TColors.primary),
+              SizedBox(width: 5),
+              Text('Analyse IA',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: TColors.primary,
+                  fontFamily: 'Poppins',
+                )),
+            ]),
+            Text(s['aiScore'] ?? '—',
+              style: const TextStyle(
+                fontSize: 11,
+                color: TColors.primary,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+              )),
+          ],
+        ),
+
+        const SizedBox(height: 7),
+
+        // Confidence score progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: _parseScore(s['aiScore']),
+            backgroundColor: TColors.borderLight,
+            valueColor: const AlwaysStoppedAnimation(TColors.primary),
+            minHeight: 5,
+          ),
+        ),
+
+        const SizedBox(height: 7),
+
+        // Suggested category row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Catégorie suggérée',
+              style: TextStyle(
+                fontSize: 9,
+                color: TColors.textSecondary,
+                fontFamily: 'Poppins',
+              )),
+            Text(s['aiCategorie'] ?? '—',
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+                color: TColors.primary,
+                fontFamily: 'Poppins',
+              )),
+          ],
+        ),
+      ]),
+    );
+  }
+
+  // ── Timeline Card ──────────────────────────────────────────
+  // 3-step timeline: created → assigned → resolved
+  // Each step has a colored dot and connecting line.
+  Widget _buildTimelineCard(
+      Map<String, String> s, String status, bool isDark) {
+    final hasAgent = s['agent'] != null &&
+      s['agent']!.isNotEmpty && s['agent'] != '—';
+    final isResolved = status == 'RESOLU';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? TColors.cardDark : TColors.cardLight,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: TColors.borderLight, width: 0.5),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Suivi',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: TColors.textSecondary,
+              fontFamily: 'Poppins',
+            )),
+          const SizedBox(height: 10),
+          _timelineItem(
+            'Signalement créé',
+            s['time'] ?? '—',
+            done: true,
+            isLast: false,
+          ),
+          _timelineItem(
+            'Pris en charge',
+            hasAgent
+              ? 'Par ${s['agent']}'
+              : 'En attente d\'un agent',
+            done: hasAgent,
+            isLast: false,
+          ),
+          _timelineItem(
+            'Résolu',
+            isResolved
+              ? 'Problème résolu avec succès'
+              : 'En cours de traitement',
+            done: isResolved,
+            isLast: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Info Row ───────────────────────────────────────────────
+  // Single label + value row inside info card.
+  Widget _infoRow(
+      String label, String value, IconData icon, bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(children: [
-          Icon(icon, size: 18, color: TColors.grey),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(
-            fontSize: 13, color: TColors.textSecondary)),
+          Icon(icon, size: 14, color: TColors.grey),
+          const SizedBox(width: 7),
+          Text(label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: TColors.textSecondary,
+              fontFamily: 'Poppins',
+            )),
         ]),
-        Text(value, style: const TextStyle(
-          fontSize: 13, fontWeight: FontWeight.w500)),
+        Flexible(
+          child: Text(value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+              color: isDark
+                ? TColors.textWhite : TColors.textPrimary,
+            )),
+        ),
       ],
     );
   }
 
-  Widget _timelineItem(String title, String subtitle,
-      bool done, {bool isLast = false}) {
+  // ── Thin Divider ───────────────────────────────────────────
+  Widget _thinDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 7),
+      child: Divider(
+        height: 0,
+        thickness: 0.5,
+        color: TColors.borderLight,
+      ),
+    );
+  }
+
+  // ── Timeline Item ──────────────────────────────────────────
+  // Single step in the status timeline.
+  // Dot is red if done, gray if pending.
+  // Connecting line runs between steps.
+  Widget _timelineItem(
+      String title, String subtitle, {
+      required bool done,
+      required bool isLast,
+    }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+
+        // Dot + connecting line column
         Column(children: [
           Container(
-            width: 20, height: 20,
+            width: 18, height: 18,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: done ? TColors.primary : TColors.borderLight),
+              color: done ? TColors.primary : TColors.borderLight,
+            ),
             child: done
               ? const Icon(Icons.check,
-                  size: 12, color: Colors.white)
-              : null),
+                  size: 10, color: Colors.white)
+              : null,
+          ),
+          // Connecting line — hidden for last item
           if (!isLast)
             Container(
-              width: 2, height: 32,
+              width: 1.5, height: 28,
               color: done
                 ? TColors.primary.withValues(alpha: 0.3)
-                : TColors.borderLight),
+                : TColors.borderLight,
+            ),
         ]),
-        const SizedBox(width: 12),
+
+        const SizedBox(width: 10),
+
+        // Title + subtitle text
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.only(top: 1),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: done
-                    ? TColors.textPrimary
-                    : TColors.textHint)),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(
-                  fontSize: 11, color: TColors.textHint)),
-                if (!isLast) const SizedBox(height: 12),
+                Text(title,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Poppins',
+                    color: done
+                      ? TColors.textPrimary : TColors.textHint,
+                  )),
+                const SizedBox(height: 1),
+                Text(subtitle,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    color: TColors.textHint,
+                    fontFamily: 'Poppins',
+                  )),
+                if (!isLast) const SizedBox(height: 10),
               ],
             ),
           ),
@@ -335,4 +586,29 @@ class _SignalementDetailScreenState
       ],
     );
   }
+}
+
+// ── Grid Painter ───────────────────────────────────────────────
+// Paints subtle grid lines on the map placeholder background.
+class _GridPainter extends CustomPainter {
+  final bool isDark;
+  _GridPainter({required this.isDark});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black)
+          .withValues(alpha: 0.06)
+      ..strokeWidth = 0.5;
+
+    for (double x = 0; x < size.width; x += 18) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += 18) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GridPainter old) => old.isDark != isDark;
 }
