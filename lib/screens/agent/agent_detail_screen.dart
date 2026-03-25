@@ -28,7 +28,6 @@ import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 class AgentDetailScreen extends StatefulWidget {
-  // Full signalement data passed from AgentHomeScreen list
   final Map<String, String> signalement;
 
   const AgentDetailScreen({
@@ -43,29 +42,13 @@ class AgentDetailScreen extends StatefulWidget {
 class _AgentDetailScreenState extends State<AgentDetailScreen> {
 
   // Currently selected status in the dropdown
-  // Initialized from the signalement's current status
   String? _selectedStatus;
 
   // Available status options matching backend enum
   final _statuts = ['EN_ATTENTE', 'EN_COURS', 'RESOLU'];
 
-  // ── Status Helpers ─────────────────────────────────────────
-  Color _statusColor(String s) {
-    switch (s) {
-      case 'EN_COURS': return TColors.info;
-      case 'RESOLU':   return TColors.success;
-      default:         return TColors.warning;
-    }
-  }
-
-  Color _statusBg(String s) {
-    switch (s) {
-      case 'EN_COURS': return TColors.infoLight;
-      case 'RESOLU':   return TColors.successLight;
-      default:         return TColors.warningLight;
-    }
-  }
-
+  // ── Status Label ───────────────────────────────────────────
+  // Only label is needed — color is white pill on red AppBar
   String _statusLabel(String s) {
     switch (s) {
       case 'EN_COURS': return 'En cours';
@@ -102,7 +85,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-select current status in the dropdown
     _selectedStatus = widget.signalement['status'] ?? 'EN_ATTENTE';
   }
 
@@ -115,8 +97,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? TColors.dark : TColors.light,
-
-      // ── AppBar with current status badge ──────────────────
       appBar: AppBar(
         backgroundColor: TColors.primary,
         foregroundColor: Colors.white,
@@ -131,7 +111,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
             fontFamily: 'Poppins',
           )),
         actions: [
-          // Current status shown as white pill in top right
           Container(
             margin: const EdgeInsets.only(right: 12),
             padding: const EdgeInsets.symmetric(
@@ -150,22 +129,14 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
           ),
         ],
       ),
-
-      // ── Body ───────────────────────────────────────────────
       body: SingleChildScrollView(
         child: Column(children: [
-
-          // ── Map Placeholder ────────────────────────────────
           _buildMap(s['localisation'], isDark),
-
-          // ── Detail Cards ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
-                // Signalement title
                 Text(s['title'] ?? '—',
                   style: TextStyle(
                     fontSize: 13,
@@ -174,27 +145,14 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
                       ? TColors.textWhite : TColors.textPrimary,
                     fontFamily: 'Poppins',
                   )),
-
                 const SizedBox(height: 8),
-
-                // Info card — key details at a glance
                 _buildInfoCard(s, priority, isDark),
-
                 const SizedBox(height: 8),
-
-                // Description card
                 _buildDescriptionCard(s, isDark),
-
                 const SizedBox(height: 8),
-
-                // AI analysis card
                 _buildAICard(s),
-
                 const SizedBox(height: 8),
-
-                // Status changer card — agent action panel
                 _buildStatusCard(isDark),
-
                 const SizedBox(height: 16),
               ],
             ),
@@ -205,7 +163,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   }
 
   // ── Map Placeholder ────────────────────────────────────────
-  // Compact 70px container with grid + pin icon + address.
   Widget _buildMap(String? location, bool isDark) {
     return Container(
       height: 70,
@@ -213,12 +170,10 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
         ? const Color(0xFF1A2A1A)
         : const Color(0xFFE8F0E8),
       child: Stack(children: [
-        // Grid lines for map feel
         CustomPaint(
           size: const Size(double.infinity, 70),
           painter: _GridPainter(isDark: isDark),
         ),
-        // Pin icon + address text centered
         Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -241,7 +196,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   }
 
   // ── Info Card ──────────────────────────────────────────────
-  // Key-value rows with thin dividers between each row.
   Widget _buildInfoCard(
       Map<String, String> s, String priority, bool isDark) {
     return Container(
@@ -266,8 +220,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
           s['time'] ?? '—',
           Icons.calendar_today_outlined, isDark),
         _thinDivider(),
-
-        // Priority shown as colored pill
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -338,7 +290,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   }
 
   // ── AI Analysis Card ───────────────────────────────────────
-  // Red tinted background distinguishes AI section visually.
   Widget _buildAICard(Map<String, String> s) {
     return Container(
       decoration: BoxDecoration(
@@ -350,8 +301,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
       ),
       padding: const EdgeInsets.all(12),
       child: Column(children: [
-
-        // Header row — icon + label + score value
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -376,10 +325,7 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
               )),
           ],
         ),
-
         const SizedBox(height: 7),
-
-        // Confidence score progress bar
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -389,10 +335,7 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
             minHeight: 5,
           ),
         ),
-
         const SizedBox(height: 7),
-
-        // Suggested category row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -416,9 +359,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   }
 
   // ── Status Changer Card ────────────────────────────────────
-  // Dropdown to pick new status + two action buttons.
-  // "Mettre à jour" saves selected status.
-  // "Résoudre" is a quick shortcut to mark RESOLU directly.
   Widget _buildStatusCard(bool isDark) {
     return Container(
       decoration: BoxDecoration(
@@ -437,10 +377,7 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
               color: TColors.textSecondary,
               fontFamily: 'Poppins',
             )),
-
           const SizedBox(height: 8),
-
-          // Status dropdown
           Container(
             decoration: BoxDecoration(
               color: isDark ? TColors.dark : TColors.light,
@@ -483,26 +420,18 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
                 setState(() => _selectedStatus = v),
             ),
           ),
-
           const SizedBox(height: 10),
-
-          // Action buttons side by side
           Row(children: [
-
-            // Update button — saves selected dropdown status
             Expanded(
               child: SizedBox(
                 height: 40,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: Call PUT /signalements/ChangerStatut/:id
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text(
-                          'Statut mis à jour ✓',
+                        content: const Text('Statut mis à jour ✓',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'Poppins')),
+                            fontSize: 12, fontFamily: 'Poppins')),
                         backgroundColor: TColors.success,
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
@@ -527,24 +456,18 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
                 ),
               ),
             ),
-
             const SizedBox(width: 8),
-
-            // Resolve button — quick shortcut to mark as RESOLU
             Expanded(
               child: SizedBox(
                 height: 40,
                 child: OutlinedButton(
                   onPressed: () {
                     setState(() => _selectedStatus = 'RESOLU');
-                    // TODO: Call PUT /signalements/ChangerStatut/:id
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text(
-                          'Signalement résolu ✓',
+                        content: const Text('Signalement résolu ✓',
                           style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'Poppins')),
+                            fontSize: 12, fontFamily: 'Poppins')),
                         backgroundColor: TColors.success,
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
@@ -576,7 +499,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
   }
 
   // ── Info Row ───────────────────────────────────────────────
-  // Reusable label + value row inside info card.
   Widget _infoRow(
       String label, String value, IconData icon, bool isDark) {
     return Row(
@@ -622,7 +544,6 @@ class _AgentDetailScreenState extends State<AgentDetailScreen> {
 }
 
 // ── Grid Painter ───────────────────────────────────────────────
-// Paints subtle grid lines on the map placeholder.
 class _GridPainter extends CustomPainter {
   final bool isDark;
   _GridPainter({required this.isDark});

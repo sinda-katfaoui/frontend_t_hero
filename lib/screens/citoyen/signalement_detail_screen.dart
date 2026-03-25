@@ -16,7 +16,6 @@
 // - Compact map at 80px — fits without scrolling
 // - Info rows in a white card with thin dividers
 // - Timeline uses colored dots + connecting lines
-// - All sections compact enough to fit one screen
 // - ScrollView kept for safety on small devices
 //
 // TODO: Connect to real data:
@@ -27,8 +26,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
-class SignalementDetailScreen extends StatefulWidget {
-  // Signalement data passed from the parent list screen
+class SignalementDetailScreen extends StatelessWidget {
   final Map<String, String> signalement;
 
   const SignalementDetailScreen({
@@ -36,31 +34,7 @@ class SignalementDetailScreen extends StatefulWidget {
     required this.signalement,
   });
 
-  @override
-  State<SignalementDetailScreen> createState() =>
-      _SignalementDetailScreenState();
-}
-
-class _SignalementDetailScreenState
-    extends State<SignalementDetailScreen> {
-
   // ── Status Helpers ─────────────────────────────────────────
-  Color _statusColor(String s) {
-    switch (s) {
-      case 'EN_COURS': return TColors.info;
-      case 'RESOLU':   return TColors.success;
-      default:         return TColors.warning;
-    }
-  }
-
-  Color _statusBg(String s) {
-    switch (s) {
-      case 'EN_COURS': return TColors.infoLight;
-      case 'RESOLU':   return TColors.successLight;
-      default:         return TColors.warningLight;
-    }
-  }
-
   String _statusLabel(String s) {
     switch (s) {
       case 'EN_COURS': return 'En cours';
@@ -87,7 +61,6 @@ class _SignalementDetailScreenState
   }
 
   // ── AI Score Parser ────────────────────────────────────────
-  // Converts "80%" string to 0.8 double for progress bar
   double _parseScore(String? score) {
     if (score == null) return 0.5;
     return (double.tryParse(
@@ -96,15 +69,13 @@ class _SignalementDetailScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final s      = widget.signalement;
-    final status  = s['status']   ?? 'EN_ATTENTE';
+    final isDark   = Theme.of(context).brightness == Brightness.dark;
+    final s        = signalement;
+    final status   = s['status']   ?? 'EN_ATTENTE';
     final priority = s['priority'] ?? 'FAIBLE';
 
     return Scaffold(
       backgroundColor: isDark ? TColors.dark : TColors.light,
-
-      // ── AppBar with status badge ───────────────────────────
       appBar: AppBar(
         backgroundColor: TColors.primary,
         foregroundColor: Colors.white,
@@ -118,7 +89,6 @@ class _SignalementDetailScreenState
             fontWeight: FontWeight.w600,
             fontFamily: 'Poppins',
           )),
-        // Status pill badge in top right
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12),
@@ -138,24 +108,14 @@ class _SignalementDetailScreenState
           ),
         ],
       ),
-
-      // ── Body ───────────────────────────────────────────────
-      // SingleChildScrollView kept for safety on small screens
       body: SingleChildScrollView(
         child: Column(children: [
-
-          // ── Map Placeholder ────────────────────────────────
-          // Shows location name. Replace with GoogleMap later.
           _buildMap(s['localisation'], isDark),
-
-          // ── All Detail Cards ────────────────────────────────
           Padding(
             padding: const EdgeInsets.all(10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-
-                // Signalement title
                 Text(s['title'] ?? 'Signalement',
                   style: TextStyle(
                     fontSize: 13,
@@ -164,28 +124,16 @@ class _SignalementDetailScreenState
                       ? TColors.textWhite : TColors.textPrimary,
                     fontFamily: 'Poppins',
                   )),
-
                 const SizedBox(height: 8),
-
-                // Info card — category, location, citoyen, date
                 _buildInfoCard(s, priority, isDark),
-
                 const SizedBox(height: 8),
-
-                // Description card
                 _buildDescriptionCard(s, isDark),
-
-                // AI Analysis card — only shown if data exists
                 if (s['aiScore'] != null) ...[
                   const SizedBox(height: 8),
                   _buildAICard(s),
                 ],
-
                 const SizedBox(height: 8),
-
-                // Timeline card — shows progress of signalement
                 _buildTimelineCard(s, status, isDark),
-
                 const SizedBox(height: 16),
               ],
             ),
@@ -196,22 +144,17 @@ class _SignalementDetailScreenState
   }
 
   // ── Map Placeholder ────────────────────────────────────────
-  // Compact at 80px with grid lines and location pin.
   Widget _buildMap(String? location, bool isDark) {
     return Container(
       height: 80,
-      decoration: BoxDecoration(
-        color: isDark
-          ? const Color(0xFF1A2A1A)
-          : const Color(0xFFE8F0E8),
-      ),
+      color: isDark
+        ? const Color(0xFF1A2A1A)
+        : const Color(0xFFE8F0E8),
       child: Stack(children: [
-        // Grid lines for map feel
         CustomPaint(
           size: const Size(double.infinity, 80),
           painter: _GridPainter(isDark: isDark),
         ),
-        // Location pin + address
         Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -234,7 +177,6 @@ class _SignalementDetailScreenState
   }
 
   // ── Info Card ──────────────────────────────────────────────
-  // White card with key-value rows separated by thin dividers.
   Widget _buildInfoCard(
       Map<String, String> s, String priority, bool isDark) {
     return Container(
@@ -260,8 +202,6 @@ class _SignalementDetailScreenState
           s['time'] ?? '—',
           Icons.calendar_today_outlined, isDark),
         _thinDivider(),
-
-        // Priority row uses a colored pill instead of text
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -293,8 +233,6 @@ class _SignalementDetailScreenState
             ),
           ],
         ),
-
-        // Agent row — only shown if an agent is assigned
         if (s['agent'] != null &&
             s['agent']!.isNotEmpty &&
             s['agent'] != '—') ...[
@@ -327,8 +265,7 @@ class _SignalementDetailScreenState
               fontFamily: 'Poppins',
             )),
           const SizedBox(height: 5),
-          Text(
-            s['description'] ?? 'Aucune description disponible.',
+          Text(s['description'] ?? 'Aucune description disponible.',
             style: TextStyle(
               fontSize: 10,
               color: isDark
@@ -342,7 +279,6 @@ class _SignalementDetailScreenState
   }
 
   // ── AI Analysis Card ───────────────────────────────────────
-  // Shows confidence score with a progress bar + category.
   Widget _buildAICard(Map<String, String> s) {
     return Container(
       decoration: BoxDecoration(
@@ -354,8 +290,6 @@ class _SignalementDetailScreenState
       ),
       padding: const EdgeInsets.all(12),
       child: Column(children: [
-
-        // Header row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -380,10 +314,7 @@ class _SignalementDetailScreenState
               )),
           ],
         ),
-
         const SizedBox(height: 7),
-
-        // Confidence score progress bar
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
@@ -393,10 +324,7 @@ class _SignalementDetailScreenState
             minHeight: 5,
           ),
         ),
-
         const SizedBox(height: 7),
-
-        // Suggested category row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -420,8 +348,6 @@ class _SignalementDetailScreenState
   }
 
   // ── Timeline Card ──────────────────────────────────────────
-  // 3-step timeline: created → assigned → resolved
-  // Each step has a colored dot and connecting line.
   Widget _buildTimelineCard(
       Map<String, String> s, String status, bool isDark) {
     final hasAgent = s['agent'] != null &&
@@ -446,35 +372,24 @@ class _SignalementDetailScreenState
               fontFamily: 'Poppins',
             )),
           const SizedBox(height: 10),
-          _timelineItem(
-            'Signalement créé',
-            s['time'] ?? '—',
-            done: true,
-            isLast: false,
-          ),
-          _timelineItem(
-            'Pris en charge',
+          _timelineItem('Signalement créé',
+            s['time'] ?? '—', done: true, isLast: false),
+          _timelineItem('Pris en charge',
             hasAgent
               ? 'Par ${s['agent']}'
               : 'En attente d\'un agent',
-            done: hasAgent,
-            isLast: false,
-          ),
-          _timelineItem(
-            'Résolu',
+            done: hasAgent, isLast: false),
+          _timelineItem('Résolu',
             isResolved
               ? 'Problème résolu avec succès'
               : 'En cours de traitement',
-            done: isResolved,
-            isLast: true,
-          ),
+            done: isResolved, isLast: true),
         ],
       ),
     );
   }
 
   // ── Info Row ───────────────────────────────────────────────
-  // Single label + value row inside info card.
   Widget _infoRow(
       String label, String value, IconData icon, bool isDark) {
     return Row(
@@ -519,9 +434,6 @@ class _SignalementDetailScreenState
   }
 
   // ── Timeline Item ──────────────────────────────────────────
-  // Single step in the status timeline.
-  // Dot is red if done, gray if pending.
-  // Connecting line runs between steps.
   Widget _timelineItem(
       String title, String subtitle, {
       required bool done,
@@ -530,8 +442,6 @@ class _SignalementDetailScreenState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // Dot + connecting line column
         Column(children: [
           Container(
             width: 18, height: 18,
@@ -544,7 +454,6 @@ class _SignalementDetailScreenState
                   size: 10, color: Colors.white)
               : null,
           ),
-          // Connecting line — hidden for last item
           if (!isLast)
             Container(
               width: 1.5, height: 28,
@@ -553,10 +462,7 @@ class _SignalementDetailScreenState
                 : TColors.borderLight,
             ),
         ]),
-
         const SizedBox(width: 10),
-
-        // Title + subtitle text
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 1),
@@ -589,7 +495,6 @@ class _SignalementDetailScreenState
 }
 
 // ── Grid Painter ───────────────────────────────────────────────
-// Paints subtle grid lines on the map placeholder background.
 class _GridPainter extends CustomPainter {
   final bool isDark;
   _GridPainter({required this.isDark});
