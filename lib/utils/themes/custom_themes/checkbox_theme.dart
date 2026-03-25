@@ -1,3 +1,6 @@
+// ============================================================
+// TCheckboxTheme — Global Checkbox Styling
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
@@ -16,7 +19,7 @@ class TCheckboxTheme {
       if (states.contains(WidgetState.selected)) return TColors.primary;
       return Colors.transparent;
     }),
-    side: const BorderSide(color: TColors.borderLight, width: 1.5),
+    side: const BorderSide(color: TColors.borderLight, width: 1),
   );
 
   static CheckboxThemeData darkCheckboxTheme = CheckboxThemeData(
@@ -25,12 +28,12 @@ class TCheckboxTheme {
     ),
     checkColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) return TColors.white;
-      return TColors.white;
+      return TColors.textWhite;
     }),
     fillColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) return TColors.primary;
       return Colors.transparent;
     }),
-    side: const BorderSide(color: TColors.borderDark, width: 1.5),
+    side: const BorderSide(color: TColors.borderDark, width: 1),
   );
 }

@@ -1,3 +1,6 @@
+// ============================================================
+// TBottomSheetTheme — Global BottomSheet Styling
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
