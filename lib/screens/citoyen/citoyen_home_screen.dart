@@ -1,29 +1,3 @@
-// ============================================================
-// CitoyenHomeScreen — Main Dashboard for Citoyen Role
-// ============================================================
-// This is the main screen for citizens (Citoyen) after login.
-// It uses an IndexedStack with a bottom navigation bar to
-// switch between 4 tabs without rebuilding them each time.
-//
-// Tab structure:
-//   0 → Home (signalements list + stats)
-//   1 → History (all past signalements)
-//   2 → Empty (FAB opens NewSignalementScreen as new route)
-//   3 → Notifications
-//   4 → Profile
-//
-// Design decisions:
-// - White card header with greeting + red stats panel below
-// - Stats are inside a red rounded card — no separate gray boxes
-// - Only 3 signalements shown on home — "Voir tout" for rest
-// - FAB is a square-ish rounded button (12px radius) centered
-// - No scrolling on home tab — everything fits in one screen
-// - BottomAppBar with CircularNotchedRectangle for FAB notch
-//
-// TODO: Replace mock data with real API calls:
-//   - GET /signalements/GetSignalementsByCitoyen/:id
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend_t_hero/screens/citoyen/new_signalement_screen.dart';
@@ -33,52 +7,30 @@ import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 class CitoyenHomeScreen extends StatefulWidget {
   const CitoyenHomeScreen({super.key});
-
   @override
   State<CitoyenHomeScreen> createState() => _CitoyenHomeScreenState();
 }
 
 class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
-
-  // Tracks which bottom nav tab is active
   int _currentIndex = 0;
 
-  // Mock signalement data — replace with API response
-  // Each map matches the Signalement model fields
   final _signalements = [
-    {
-      'title': 'Nid de poule — Bourguiba',
-      'cat': 'Voirie',
-      'status': 'EN_COURS',
-      'time': 'Il y a 2h',
-    },
-    {
-      'title': 'Lampadaire cassé — Sfax',
-      'cat': 'Eclairage',
-      'status': 'EN_ATTENTE',
-      'time': 'Il y a 1j',
-    },
-    {
-      'title': 'Déchets — Sousse',
-      'cat': 'Propreté',
-      'status': 'RESOLU',
-      'time': 'Il y a 3j',
-    },
+    {'title': 'Nid de poule — Bourguiba', 'cat': 'Voirie',
+     'status': 'EN_COURS', 'time': 'Il y a 2h'},
+    {'title': 'Lampadaire cassé — Sfax', 'cat': 'Eclairage',
+     'status': 'EN_ATTENTE', 'time': 'Il y a 1j'},
+    {'title': 'Déchets — Sousse', 'cat': 'Propreté',
+     'status': 'RESOLU', 'time': 'Il y a 3j'},
   ];
 
   @override
   void initState() {
     super.initState();
-    // Light status bar icons on white header background
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ));
   }
-
-  // ── Status Helpers ─────────────────────────────────────────
-  // Map status string to display color, background, and label.
-  // Used for pill badges on each signalement card.
 
   Color _statusColor(String s) {
     switch (s) {
@@ -104,8 +56,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
     }
   }
 
-  // ── Icon per category ──────────────────────────────────────
-  // Visual indicator in the card icon box on the left.
   IconData _catIcon(String cat) {
     switch (cat) {
       case 'Voirie':        return Icons.warning_amber_rounded;
@@ -122,56 +72,44 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? TColors.dark : TColors.light,
-      // IndexedStack keeps all tabs alive — no rebuild on switch
       body: IndexedStack(
         index: _currentIndex,
         children: [
           _homeTab(isDark),
           _historyTab(isDark),
-          const SizedBox(), // Placeholder — FAB opens new screen
+          const SizedBox(),
           const NotificationsScreen(),
           const ProfileScreen(),
         ],
       ),
-
-      // ── FAB — opens new signalement form ──────────────────
-      // Square-ish shape (12px radius) for modern look.
-      // Centered in the BottomAppBar notch.
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(
-          context,
+        onPressed: () => Navigator.push(context,
           MaterialPageRoute(
-            builder: (context) => const NewSignalementScreen())),
+            builder: (_) => const NewSignalementScreen())),
         backgroundColor: TColors.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14)),
-        elevation: 0,
-        child: const Icon(Icons.add, color: Colors.white, size: 22),
+          borderRadius: BorderRadius.circular(16)),
+        elevation: 2,
+        child: const Icon(Icons.add, color: Colors.white, size: 26),
       ),
       floatingActionButtonLocation:
         FloatingActionButtonLocation.centerDocked,
-
-      // ── Bottom Navigation Bar ──────────────────────────────
-      // BottomAppBar with notch for the FAB.
-      // 4 nav items with gap in middle for FAB.
       bottomNavigationBar: BottomAppBar(
         color: isDark ? TColors.cardDark : TColors.cardLight,
-        elevation: 0,
-        notchMargin: 6,
+        elevation: 4,
+        notchMargin: 8,
         shape: const CircularNotchedRectangle(),
         child: Row(children: [
-          _navItem(Icons.grid_view_rounded, 'Accueil',   0, isDark),
-          _navItem(Icons.history,           'Historique',1, isDark),
-          const SizedBox(width: 48), // Space for FAB
+          _navItem(Icons.grid_view_rounded, 'Accueil',    0, isDark),
+          _navItem(Icons.history,           'Historique', 1, isDark),
+          const SizedBox(width: 56),
           _navItem(Icons.notifications_outlined, 'Notifs', 3, isDark),
-          _navItem(Icons.person_outline,    'Profil',    4, isDark),
+          _navItem(Icons.person_outline,    'Profil',     4, isDark),
         ]),
       ),
     );
   }
 
-  // ── Nav Item Widget ────────────────────────────────────────
-  // Each bottom nav tab with icon + label + active dot indicator.
   Widget _navItem(IconData icon, String label, int index, bool isDark) {
     final active = _currentIndex == index;
     return Expanded(
@@ -179,33 +117,21 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
         onTap: () => setState(() => _currentIndex = index),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon,
-                size: 19,
+              Icon(icon, size: 22,
                 color: active ? TColors.primary : TColors.grey),
               const SizedBox(height: 2),
               Text(label,
                 style: TextStyle(
-                  fontSize: 7,
+                  fontSize: 10,
                   fontFamily: 'Poppins',
                   color: active ? TColors.primary : TColors.grey,
                   fontWeight: active
-                    ? FontWeight.w500 : FontWeight.w400,
+                    ? FontWeight.w600 : FontWeight.w400,
                 )),
-              // Active indicator dot below label
-              if (active) ...[
-                const SizedBox(height: 2),
-                Container(
-                  width: 3, height: 3,
-                  decoration: const BoxDecoration(
-                    color: TColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
@@ -213,20 +139,15 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
     );
   }
 
-  // ── Home Tab ───────────────────────────────────────────────
-  // Contains: white header, red stats card, signalement list.
-  // Everything fits on screen — no vertical scroll.
   Widget _homeTab(bool isDark) {
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
-          // ── White Top Header ────────────────────────────
-          // Greeting + notification bell + avatar
+          // ── White header ──────────────────────────────────
           Container(
             color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -235,61 +156,57 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
                   children: [
                     Text('Bonjour 👋',
                       style: TextStyle(
-                        fontSize: 9,
+                        fontSize: 13,
                         color: TColors.textHint,
                         fontFamily: 'Poppins',
                       )),
                     const Text('Amira Bouazizi',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
                         color: TColors.textPrimary,
                         fontFamily: 'Poppins',
                       )),
                   ],
                 ),
                 Row(children: [
-                  // Notification bell with unread red dot
                   Stack(children: [
                     Container(
-                      width: 32, height: 32,
+                      width: 40, height: 40,
                       decoration: BoxDecoration(
                         color: isDark
                           ? TColors.darkContainer : TColors.light,
-                        borderRadius: BorderRadius.circular(50),
+                        shape: BoxShape.circle,
                       ),
                       child: IconButton(
-                        icon: Icon(
-                          Icons.notifications_outlined,
-                          size: 16,
+                        icon: Icon(Icons.notifications_outlined,
+                          size: 20,
                           color: isDark
                             ? TColors.textWhite : TColors.textPrimary),
                         padding: EdgeInsets.zero,
                         onPressed: () =>
                           setState(() => _currentIndex = 3)),
                     ),
-                    // Unread notification dot
-                    Positioned(
-                      top: 4, right: 4,
+                    Positioned(top: 6, right: 6,
                       child: Container(
-                        width: 7, height: 7,
-                        decoration: const BoxDecoration(
+                        width: 9, height: 9,
+                        decoration: BoxDecoration(
                           color: TColors.primary,
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white, width: 1.5),
                         ),
-                      ),
-                    ),
+                      )),
                   ]),
-                  const SizedBox(width: 8),
-                  // User avatar with initials
+                  const SizedBox(width: 10),
                   CircleAvatar(
-                    radius: 16,
+                    radius: 20,
                     backgroundColor: TColors.primary,
                     child: const Text('AB',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                         fontFamily: 'Poppins',
                       )),
                   ),
@@ -298,38 +215,36 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
             ),
           ),
 
-          // ── Red Stats Card ──────────────────────────────
-          // Shows total, en cours, résolus counts.
-          // Full-width red rounded card — premium look.
+          // ── Red stats card ────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Container(
               decoration: BoxDecoration(
                 color: TColors.primary,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
               ),
               padding: const EdgeInsets.symmetric(
-                vertical: 12, horizontal: 8),
+                vertical: 16, horizontal: 8),
               child: Row(children: [
                 _statItem('4', 'Total'),
-                _divider(),
+                _vDivider(),
                 _statItem('2', 'En cours'),
-                _divider(),
+                _vDivider(),
                 _statItem('1', 'Résolus'),
               ]),
             ),
           ),
 
-          // ── Section Header ──────────────────────────────
+          // ── Section header ────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Récents',
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     color: TColors.textPrimary,
                     fontFamily: 'Poppins',
                   )),
@@ -337,24 +252,23 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
                   onTap: () => setState(() => _currentIndex = 1),
                   child: const Text('Voir tout →',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 13,
                       color: TColors.primary,
                       fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
                     )),
                 ),
               ],
             ),
           ),
 
-          // ── Signalement Cards ───────────────────────────
-          // Shows max 3 items — no scrolling needed.
-          // Each card has a category icon, title, and status pill.
+          // ── Signalement cards ─────────────────────────────
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: _signalements.map((s) =>
-                  _signalementCard(s, isDark)).toList(),
+                  _card(s, isDark)).toList(),
               ),
             ),
           ),
@@ -363,72 +277,54 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
     );
   }
 
-  // ── History Tab ────────────────────────────────────────────
-  // Shows all signalements in a scrollable list.
   Widget _historyTab(bool isDark) {
     return SafeArea(
       child: Column(children: [
-        // Simple header
         Container(
           color: isDark ? TColors.cardDark : TColors.cardLight,
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-          child: const Row(
-            children: [
-              Text('Historique',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: TColors.textPrimary,
-                  fontFamily: 'Poppins',
-                )),
-            ],
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: const Row(children: [
+            Text('Historique',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: TColors.textPrimary,
+                fontFamily: 'Poppins',
+              )),
+          ]),
         ),
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(16),
             itemCount: _signalements.length,
-            itemBuilder: (context, i) =>
-              _signalementCard(_signalements[i], isDark),
+            itemBuilder: (_, i) => _card(_signalements[i], isDark),
           ),
         ),
       ]),
     );
   }
 
-  // ── Signalement Card ───────────────────────────────────────
-  // Reused in both home tab and history tab.
-  // Shows: category icon box, title, subtitle, status pill.
-  Widget _signalementCard(
-      Map<String, String> s, bool isDark) {
+  Widget _card(Map<String, String> s, bool isDark) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isDark ? TColors.cardDark : TColors.cardLight,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: TColors.borderLight, width: 0.5),
       ),
       padding: const EdgeInsets.symmetric(
-        horizontal: 10, vertical: 8),
+        horizontal: 14, vertical: 12),
       child: Row(children: [
-
-        // Category icon box — color matches status
         Container(
-          width: 36, height: 36,
+          width: 44, height: 44,
           decoration: BoxDecoration(
             color: _statusBg(s['status']!),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(
-            _catIcon(s['cat']!),
-            size: 16,
-            color: _statusColor(s['status']!),
-          ),
+          child: Icon(_catIcon(s['cat']!),
+            size: 20, color: _statusColor(s['status']!)),
         ),
-
-        const SizedBox(width: 10),
-
-        // Title and subtitle
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,37 +332,34 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
               Text(s['title']!,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: isDark
                     ? TColors.textWhite : TColors.textPrimary,
                   fontFamily: 'Poppins',
                 )),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
               Text('${s['cat']} · ${s['time']}',
                 style: const TextStyle(
-                  fontSize: 9,
+                  fontSize: 12,
                   color: TColors.textHint,
                   fontFamily: 'Poppins',
                 )),
             ],
           ),
         ),
-
-        const SizedBox(width: 6),
-
-        // Status pill badge
+        const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 8, vertical: 3),
+            horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
             color: _statusBg(s['status']!),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(_statusLabel(s['status']!),
             style: TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.w500,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
               color: _statusColor(s['status']!),
               fontFamily: 'Poppins',
             )),
@@ -475,36 +368,30 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
     );
   }
 
-  // ── Stat Item ──────────────────────────────────────────────
-  // Single stat inside the red stats card.
-  // Number is large white, label is small faded white below.
   Widget _statItem(String num, String label) {
     return Expanded(
       child: Column(children: [
         Text(num,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
             fontFamily: 'Poppins',
           )),
         const SizedBox(height: 2),
         Text(label,
           style: TextStyle(
-            fontSize: 8,
-            color: Colors.white.withValues(alpha: 0.65),
+            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.7),
             fontFamily: 'Poppins',
           )),
       ]),
     );
   }
 
-  // ── Vertical Divider ───────────────────────────────────────
-  // Thin white separator between stat items.
-  Widget _divider() {
+  Widget _vDivider() {
     return Container(
-      width: 0.5,
-      height: 28,
+      width: 1, height: 36,
       color: Colors.white.withValues(alpha: 0.2),
     );
   }
