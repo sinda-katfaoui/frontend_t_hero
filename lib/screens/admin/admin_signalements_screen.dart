@@ -1,44 +1,8 @@
-// ============================================================
-// AdminSignalementsScreen — Signalement Management for Admin
-// ============================================================
-// Displays all signalements with filter tabs by status.
-// Embedded in AdminHomeScreen's IndexedStack at tab index 2.
-//
-// Filter tabs:
-//   0 → Tous        (all signalements)
-//   1 → En attente  (status = EN_ATTENTE)
-//   2 → Résolus     (status = RESOLU)
-//
-// Each signalement card shows:
-//   - Title + status pill
-//   - Citoyen name + category
-//   - Assigned agent name
-//   - "Assigner" button for unassigned signalements
-//
-// Assign dialog:
-//   - Radio list of available agents
-//   - Confirm button only enabled when agent selected
-//
-// Design decisions:
-// - White card header with title + signalement count
-// - Animated filter tabs matching AdminUsersScreen style
-// - Compact cards — title + subtitle + agent + button
-// - "Assigner" is a small red pill button — not full width
-// - Dialog uses radio buttons for agent selection
-// - No scrolling on short filtered lists
-//
-// TODO: Connect to real API:
-//   - GET /signalements/GetAllSignalements
-//   - PUT /signalements/TraiterSignalement/:id (assign agent)
-//   - GET /users/GetAllAgents (populate agent list)
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 class AdminSignalementsScreen extends StatefulWidget {
   const AdminSignalementsScreen({super.key});
-
   @override
   State<AdminSignalementsScreen> createState() =>
       _AdminSignalementsScreenState();
@@ -46,44 +10,20 @@ class AdminSignalementsScreen extends StatefulWidget {
 
 class _AdminSignalementsScreenState
     extends State<AdminSignalementsScreen> {
-
-  // Active filter tab: 0=Tous, 1=En attente, 2=Résolus
   int _filter = 0;
   final _filters = ['Tous', 'En attente', 'Résolus'];
 
-  // Mock signalement data — replace with API response
-  final _signalements = [
-    {
-      'title':   'Nid de poule — Bourguiba',
-      'citoyen': 'Amira',
-      'cat':     'Voirie',
-      'status':  'RESOLU',
-      'agent':   'Agent Habib',
-    },
-    {
-      'title':   'Lampadaire cassé — Sfax',
-      'citoyen': 'Mohamed',
-      'cat':     'Eclairage',
-      'status':  'EN_ATTENTE',
-      'agent':   '—',
-    },
-    {
-      'title':   'Déchets — Sousse',
-      'citoyen': 'Sara',
-      'cat':     'Propreté',
-      'status':  'EN_ATTENTE',
-      'agent':   '—',
-    },
-    {
-      'title':   'Arbres — El Mourouj',
-      'citoyen': 'Yassine',
-      'cat':     'Espaces Verts',
-      'status':  'EN_ATTENTE',
-      'agent':   '—',
-    },
+  final List<Map<String, String>> _signalements = [
+    {'title': 'Nid de poule — Bourguiba', 'citoyen': 'Amira',
+     'cat': 'Voirie', 'status': 'RESOLU', 'agent': 'Agent Habib'},
+    {'title': 'Lampadaire cassé — Sfax', 'citoyen': 'Mohamed',
+     'cat': 'Eclairage', 'status': 'EN_ATTENTE', 'agent': '—'},
+    {'title': 'Déchets — Sousse', 'citoyen': 'Sara',
+     'cat': 'Propreté', 'status': 'EN_ATTENTE', 'agent': '—'},
+    {'title': 'Arbres — El Mourouj', 'citoyen': 'Yassine',
+     'cat': 'Espaces Verts', 'status': 'EN_ATTENTE', 'agent': '—'},
   ];
 
-  // ── Status Helpers ─────────────────────────────────────────
   Color _statusColor(String s) {
     switch (s) {
       case 'EN_COURS': return TColors.info;
@@ -108,11 +48,11 @@ class _AdminSignalementsScreenState
     }
   }
 
-  // ── Filtered Signalements ──────────────────────────────────
   List<Map<String, String>> get _filtered {
     if (_filter == 0) return _signalements;
-    if (_filter == 1) return _signalements
-      .where((s) => s['status'] == 'EN_ATTENTE').toList();
+    if (_filter == 1)
+      return _signalements
+        .where((s) => s['status'] == 'EN_ATTENTE').toList();
     return _signalements
       .where((s) => s['status'] == 'RESOLU').toList();
   }
@@ -126,34 +66,32 @@ class _AdminSignalementsScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
 
-          // ── Header ──────────────────────────────────────
-          // White card with title + total count badge
+          // ── Header ────────────────────────────────────────
           Container(
             color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Signalements',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
                     color: TColors.textPrimary,
                     fontFamily: 'Poppins',
                   )),
-                // Total count pill
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 9, vertical: 3),
+                    horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
                     color: TColors.primaryLight,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('${_signalements.length} total',
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       color: TColors.primary,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'Poppins',
                     )),
                 ),
@@ -161,33 +99,32 @@ class _AdminSignalementsScreenState
             ),
           ),
 
-          // ── Filter Tabs ──────────────────────────────────
+          // ── Filter Tabs ───────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
                   ? TColors.darkContainer
                   : const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              padding: const EdgeInsets.all(3),
+              padding: const EdgeInsets.all(4),
               child: Row(
                 children: List.generate(3, (i) => Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _filter = i),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
                       padding: const EdgeInsets.symmetric(
-                        vertical: 7),
+                        vertical: 9),
                       decoration: BoxDecoration(
                         color: _filter == i
                           ? (isDark
                               ? TColors.cardDark
                               : TColors.cardLight)
                           : Colors.transparent,
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(10),
                         border: _filter == i
                           ? Border.all(
                               color: TColors.borderLight,
@@ -197,10 +134,10 @@ class _AdminSignalementsScreenState
                       child: Text(_filters[i],
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 13,
                           fontFamily: 'Poppins',
                           fontWeight: _filter == i
-                            ? FontWeight.w500 : FontWeight.w400,
+                            ? FontWeight.w600 : FontWeight.w400,
                           color: _filter == i
                             ? TColors.primary : TColors.textHint,
                         )),
@@ -211,13 +148,14 @@ class _AdminSignalementsScreenState
             ),
           ),
 
-          // ── Signalement Cards List ────────────────────────
+          // ── Signalement List ──────────────────────────────
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 4),
               itemCount: _filtered.length,
-              itemBuilder: (context, i) =>
-                _signalementCard(_filtered[i], isDark),
+              itemBuilder: (_, i) =>
+                _card(_filtered[i], isDark),
             ),
           ),
         ],
@@ -225,27 +163,22 @@ class _AdminSignalementsScreenState
     );
   }
 
-  // ── Signalement Card ───────────────────────────────────────
-  // Compact card with title, status pill, citoyen,
-  // category, agent info, and assign button if unassigned.
-  Widget _signalementCard(
-      Map<String, String> s, bool isDark) {
+  Widget _card(Map<String, String> s, bool isDark) {
     final isUnassigned = s['status'] == 'EN_ATTENTE' &&
       (s['agent'] == '—' || s['agent']!.isEmpty);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: isDark ? TColors.cardDark : TColors.cardLight,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: TColors.borderLight, width: 0.5),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
-          // Title row + status pill
+          // Title + status
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -253,78 +186,76 @@ class _AdminSignalementsScreenState
                 child: Text(s['title']!,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                     color: isDark
                       ? TColors.textWhite : TColors.textPrimary,
                     fontFamily: 'Poppins',
-                  )),
-              ),
+                  ))),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 3),
+                  horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
                   color: _statusBg(s['status']!),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(_statusLabel(s['status']!),
                   style: TextStyle(
-                    fontSize: 8,
+                    fontSize: 11,
                     color: _statusColor(s['status']!),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     fontFamily: 'Poppins',
-                  )),
-              ),
+                  ))),
             ],
           ),
-
-          const SizedBox(height: 4),
-
-          // Citoyen + category subtitle
+          const SizedBox(height: 6),
+          // Citoyen + category
           Text('${s['citoyen']} · ${s['cat']}',
             style: const TextStyle(
-              fontSize: 9,
+              fontSize: 13,
               color: TColors.textHint,
               fontFamily: 'Poppins',
             )),
-
-          const SizedBox(height: 6),
-
-          // Agent info + assign button row
+          const SizedBox(height: 8),
+          // Agent + assign button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(children: [
                 const Icon(Icons.engineering_outlined,
-                  size: 12, color: TColors.textSecondary),
-                const SizedBox(width: 4),
+                  size: 16, color: TColors.textSecondary),
+                const SizedBox(width: 6),
                 Text(s['agent']!,
                   style: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 13,
                     color: TColors.textSecondary,
                     fontFamily: 'Poppins',
                   )),
               ]),
-
-              // Assign button — only shown for unassigned ones
               if (isUnassigned)
-                GestureDetector(
-                  onTap: () => _showAssignDialog(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: TColors.primary,
-                      borderRadius: BorderRadius.circular(10),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _showAssignDialog(),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Ink(
+                      decoration: BoxDecoration(
+                        color: TColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                        child: Text('Assigner',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
+                          )),
+                      ),
                     ),
-                    child: const Text('Assigner',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Poppins',
-                      )),
                   ),
                 ),
             ],
@@ -334,24 +265,20 @@ class _AdminSignalementsScreenState
     );
   }
 
-  // ── Assign Agent Dialog ────────────────────────────────────
-  // Shows a list of agents as radio buttons.
-  // Confirm button only enabled when an agent is selected.
-  // TODO: Replace agent list with GET /users/GetAllAgents
-  // TODO: On confirm call PUT /signalements/TraiterSignalement/:id
-  void _showAssignDialog(BuildContext context) {
-    // Available agents — replace with real API data
+  void _showAssignDialog() {
     final agents = ['Agent Habib', 'Agent Sonia', 'Agent Bilel'];
     String? selected;
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (_) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
           title: const Text('Assigner un agent',
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               fontFamily: 'Poppins',
             )),
           content: Column(
@@ -362,7 +289,7 @@ class _AdminSignalementsScreenState
                 contentPadding: EdgeInsets.zero,
                 title: Text(agent,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontFamily: 'Poppins',
                   )),
                 value: agent,
@@ -378,28 +305,25 @@ class _AdminSignalementsScreenState
               onPressed: () => Navigator.pop(context),
               child: const Text('Annuler',
                 style: TextStyle(
+                  fontSize: 14,
                   color: TColors.textHint,
                   fontFamily: 'Poppins',
-                )),
-            ),
+                ))),
             ElevatedButton(
-              // Disabled until an agent is selected
               onPressed: selected != null
-                ? () => Navigator.pop(context)
-                : null,
+                ? () => Navigator.pop(context) : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: TColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(12)),
                 elevation: 0,
               ),
               child: const Text('Confirmer',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 14,
                   fontFamily: 'Poppins',
-                )),
-            ),
+                ))),
           ],
         ),
       ),

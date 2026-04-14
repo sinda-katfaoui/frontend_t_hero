@@ -1,27 +1,4 @@
-// ============================================================
-// AgentProfileScreen — Agent Municipal Profile Tab
-// ============================================================
-// Profile screen for the Agent Municipal role.
-// Embedded in AgentHomeScreen's IndexedStack at tab index 2.
-//
-// Differences from CitoyenProfileScreen:
-//   - Shows 3 stat badges inside the header (Assignés, En cours, Résolus)
-//   - Has an extra "Analyses IA" menu item
-//   - Role badge shows "Agent Municipal" instead of "Citoyen"
-//
-// Design decisions:
-// - Red curved header (26px radius) with stats row inside
-// - Square rounded avatar (16px radius) — modern not circle
-// - Stats row inside header avoids separate gray stat boxes
-// - Vertical dividers between stat numbers for clean separation
-// - Menu items are white cards with icon box + arrow
-// - Logout card is red tinted — signals destructive action
-// - Everything fits on screen — no scrolling needed
-//
-// TODO: Replace hardcoded data with real agent user info
-// from auth state or shared preferences.
-// ============================================================
-
+// agent_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:frontend_t_hero/screens/auth/login_screen.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
@@ -32,6 +9,7 @@ class AgentProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final size   = MediaQuery.of(context).size;
 
     return SafeArea(
       child: Column(
@@ -39,75 +17,112 @@ class AgentProfileScreen extends StatelessWidget {
         children: [
 
           // ── Red Header ───────────────────────────────────
-          // Avatar + name + role badge + stats row
-          _buildHeader(),
+          Container(
+            height: size.height * 0.32,
+            decoration: const BoxDecoration(
+              color: TColors.primary,
+              borderRadius: BorderRadius.only(
+                bottomLeft:  Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Square rounded avatar
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      width: 2),
+                  ),
+                  child: const Center(
+                    child: Text('AH',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'Poppins',
+                      )),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text('Agent Habib',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  )),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text('Agent Municipal',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                    )),
+                ),
+                const SizedBox(height: 14),
+                // Stats row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _stat('5', 'Assignés'),
+                    _vDiv(),
+                    _stat('3', 'En cours'),
+                    _vDiv(),
+                    _stat('2', 'Résolus'),
+                  ],
+                ),
+              ],
+            ),
+          ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
 
           // ── Menu Items ───────────────────────────────────
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  _menuItem(
-                    context,
-                    icon: Icons.person_outline,
-                    label: 'Mon profil',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 5),
-                  _menuItem(
-                    context,
-                    icon: Icons.flag_outlined,
-                    label: 'Mes signalements',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 5),
-                  _menuItem(
-                    context,
-                    icon: Icons.history,
-                    label: 'Historique',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 5),
-                  // Agent-specific: quick access to AI analyses
-                  _menuItem(
-                    context,
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'Analyses IA',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 5),
-                  _menuItem(
-                    context,
-                    icon: Icons.settings_outlined,
-                    label: 'Paramètres',
-                    onTap: () {},
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 5),
-
-                  // Divider before destructive logout action
+                  _item(context, Icons.person_outline,
+                    'Mon profil', isDark,
+                    onTap: () => _showComingSoon(context)),
+                  const SizedBox(height: 8),
+                  _item(context, Icons.flag_outlined,
+                    'Mes signalements', isDark,
+                    onTap: () => _showComingSoon(context)),
+                  const SizedBox(height: 8),
+                  _item(context, Icons.history,
+                    'Historique', isDark,
+                    onTap: () => _showComingSoon(context)),
+                  const SizedBox(height: 8),
+                  _item(context, Icons.auto_awesome_outlined,
+                    'Analyses IA', isDark,
+                    onTap: () => _showComingSoon(context)),
+                  const SizedBox(height: 8),
+                  _item(context, Icons.settings_outlined,
+                    'Paramètres', isDark,
+                    onTap: () => _showComingSoon(context)),
                   Divider(
                     color: TColors.borderLight,
-                    thickness: 0.5,
-                    height: 16,
-                  ),
-
-                  // Logout — red card, no arrow
-                  _menuItem(
-                    context,
-                    icon: Icons.logout_rounded,
-                    label: 'Déconnexion',
-                    isDark: isDark,
+                    thickness: 0.5, height: 24),
+                  _item(context, Icons.logout_rounded,
+                    'Déconnexion', isDark,
                     isRed: true,
-                    onTap: () => _logout(context),
-                  ),
+                    onTap: () => _logout(context)),
                 ],
               ),
             ),
@@ -117,202 +132,127 @@ class AgentProfileScreen extends StatelessWidget {
     );
   }
 
-  // ── Header Widget ──────────────────────────────────────────
-  // Red background with curved bottom, avatar, name,
-  // role badge, and stats row unique to agent profile.
-  Widget _buildHeader() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: TColors.primary,
-        borderRadius: BorderRadius.only(
-          bottomLeft:  Radius.circular(26),
-          bottomRight: Radius.circular(26),
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 18, 14, 16),
-      width: double.infinity,
-      child: Column(children: [
-
-        // Square rounded avatar with initials
-        // TODO: Replace with real agent profile image
-        Container(
-          width: 52, height: 52,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-              width: 1.5),
-          ),
-          child: const Center(
-            child: Text('AH',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Poppins',
-              )),
-          ),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Agent name — TODO: Replace with real user name
-        const Text('Agent Habib',
+  // ── Coming soon snackbar ───────────────────────────────────
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Fonctionnalité bientôt disponible',
           style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Poppins',
-          )),
-
-        const SizedBox(height: 5),
-
-        // Role badge pill
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12, vertical: 3),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Text('Agent Municipal',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 9,
-              fontFamily: 'Poppins',
-            )),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Stats row — unique to agent profile
-        // Shows performance numbers at a glance
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _statBadge('5', 'Assignés'),
-            _verticalDivider(),
-            _statBadge('3', 'En cours'),
-            _verticalDivider(),
-            _statBadge('2', 'Résolus'),
-          ],
-        ),
-      ]),
+            fontSize: 13, fontFamily: 'Poppins')),
+        backgroundColor: TColors.textPrimary,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
-  // ── Stat Badge ─────────────────────────────────────────────
-  // Single stat number + label inside the red header.
-  Widget _statBadge(String num, String label) {
+  Widget _stat(String num, String label) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(children: [
         Text(num,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
             fontFamily: 'Poppins',
           )),
-        const SizedBox(height: 1),
+        const SizedBox(height: 2),
         Text(label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
-            fontSize: 8,
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 11,
             fontFamily: 'Poppins',
           )),
       ]),
     );
   }
 
-  // ── Vertical Divider ───────────────────────────────────────
-  // Thin white line between stat badges in header.
-  Widget _verticalDivider() {
+  Widget _vDiv() {
     return Container(
-      width: 0.5,
-      height: 24,
-      color: Colors.white.withValues(alpha: 0.2),
+      width: 1, height: 28,
+      color: Colors.white.withValues(alpha: 0.25),
     );
   }
 
-  // ── Menu Item Widget ───────────────────────────────────────
-  // White card with icon box + label + optional arrow.
-  // isRed = true → red tinted card for logout action.
-  Widget _menuItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
+  Widget _item(
+    BuildContext context,
+    IconData icon,
+    String label,
+    bool isDark, {
     required VoidCallback onTap,
-    required bool isDark,
     bool isRed = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isRed
-            ? TColors.primaryLight
-            : (isDark ? TColors.cardDark : TColors.cardLight),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: TColors.primary.withValues(alpha: 0.08),
+        highlightColor: TColors.primary.withValues(alpha: 0.04),
+        child: Ink(
+          decoration: BoxDecoration(
             color: isRed
-              ? TColors.primary.withValues(alpha: 0.15)
-              : TColors.borderLight,
-            width: 0.5),
-        ),
-        child: Row(children: [
-
-          // Icon box
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
+              ? TColors.primaryLight
+              : (isDark ? TColors.cardDark : TColors.cardLight),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
               color: isRed
-                ? TColors.primaryLight
-                : (isDark ? TColors.dark : TColors.light),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon,
-              size: 15,
-              color: TColors.primary),
+                ? TColors.primary.withValues(alpha: 0.2)
+                : TColors.borderLight,
+              width: 0.5),
           ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 14),
+            child: Row(children: [
 
-          const SizedBox(width: 10),
+              // Icon box
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: isRed
+                    ? TColors.primaryLight
+                    : (isDark ? TColors.dark : TColors.light),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon,
+                  size: 20, color: TColors.primary),
+              ),
 
-          // Label
-          Expanded(
-            child: Text(label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Poppins',
-                color: isRed
-                  ? TColors.primary
-                  : (isDark
-                      ? TColors.textWhite
-                      : TColors.textPrimary),
-              )),
+              const SizedBox(width: 14),
+
+              Expanded(
+                child: Text(label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Poppins',
+                    color: isRed
+                      ? TColors.primary
+                      : (isDark
+                          ? TColors.textWhite
+                          : TColors.textPrimary),
+                  )),
+              ),
+
+              if (!isRed)
+                const Icon(Icons.arrow_forward_ios,
+                  size: 16, color: TColors.grey),
+            ]),
           ),
-
-          // Arrow — hidden for logout
-          if (!isRed)
-            const Icon(Icons.arrow_forward_ios,
-              size: 12, color: TColors.grey),
-        ]),
+        ),
       ),
     );
   }
 
-  // ── Logout Handler ─────────────────────────────────────────
-  // Clears navigation stack and returns to LoginScreen.
   void _logout(BuildContext context) {
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LoginScreen()),
-      (route) => false,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (r) => false,
     );
   }
 }
