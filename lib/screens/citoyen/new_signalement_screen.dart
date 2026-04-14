@@ -9,7 +9,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 // ── Classes typées — FIX de l'erreur Null ─────────────────
 class _Cat {
@@ -56,7 +55,6 @@ class _NewSignalementScreenState extends State<NewSignalementScreen> {
   bool    _loading    = false;
   bool    _gpsLoading = false;
   double? _lat;
-  double? _lng;
   String  _locLabel  = 'Localisation...';
   String  _cityLabel = 'Détection en cours';
 
@@ -126,7 +124,6 @@ class _NewSignalementScreenState extends State<NewSignalementScreen> {
         desiredAccuracy: LocationAccuracy.high);
       setState(() {
         _lat = pos.latitude;
-        _lng = pos.longitude;
         _locLabel  = '${pos.latitude.toStringAsFixed(4)}°N  ${pos.longitude.toStringAsFixed(4)}°E';
         _cityLabel = 'Position détectée';
         _gpsLoading = false;
