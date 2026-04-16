@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/screens/citoyen/new_signalement_screen.dart';
 import 'package:frontend_t_hero/screens/citoyen/notifications_screen.dart';
 import 'package:frontend_t_hero/screens/citoyen/profile_screen.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
+import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
 class CitoyenHomeScreen extends StatefulWidget {
   const CitoyenHomeScreen({super.key});
@@ -14,14 +18,12 @@ class CitoyenHomeScreen extends StatefulWidget {
 class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
   int _currentIndex = 0;
 
-  final _signalements = [
-    {'title': 'Nid de poule — Bourguiba', 'cat': 'Voirie',
-     'status': 'EN_COURS', 'time': 'Il y a 2h'},
-    {'title': 'Lampadaire cassé — Sfax', 'cat': 'Eclairage',
-     'status': 'EN_ATTENTE', 'time': 'Il y a 1j'},
-    {'title': 'Déchets — Sousse', 'cat': 'Propreté',
-     'status': 'RESOLU', 'time': 'Il y a 3j'},
-  ];
+  // ── Real data from backend ─────────────────────────────────
+  List<Map<String, dynamic>> _signalements = [];
+  bool   _loadingData = true;
+  String _userName    = '';
+  String _userInitials= '';
+  String _userId      = '';
 
   @override
   void initState() {
@@ -30,8 +32,83 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ));
+    _loadUserAndSignalements();
   }
 
+  // ── Load user from SharedPreferences + fetch signalements ──
+Future<void> _loadUserAndSignalements() async {
+  try {
+    final prefs   = await SharedPreferences.getInstance();
+    final token   = prefs.getString('token');
+    final userRaw = prefs.getString('user');
+
+    print('TOKEN: $token');
+    print('USER RAW: $userRaw');
+
+    if (userRaw == null || userRaw == '{}') {
+      print('NO USER IN PREFS');
+      setState(() => _loadingData = false);
+      return;
+    }
+
+    final user = jsonDecode(userRaw);
+    final nom  = user['nom'] ?? '';
+    final parts = nom.trim().split(' ');
+    final initials = parts.length >= 2
+      ? '${parts[0][0]}${parts[1][0]}'.toUpperCase()
+      : nom.length >= 2
+        ? nom.substring(0, 2).toUpperCase()
+        : nom.toUpperCase();
+
+    setState(() {
+      _userName     = nom;
+      _userInitials = initials;
+      _userId       = user['_id'] ?? '';
+    });
+
+    print('USER ID SET TO: $_userId');
+    await _fetchSignalements();
+  } catch (e) {
+    print('ERROR IN LOAD: $e');
+    setState(() => _loadingData = false);
+  }
+}
+
+  // ── GET signalements by citoyen ────────────────────────────
+  Future<void> _fetchSignalements() async {
+    if (_userId.isEmpty) return;
+    setState(() => _loadingData = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.get(
+        Uri.parse(
+          '${ApiConstants.baseUrl}/signalements/GetSignalementsByCitoyen/$_userId'),
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['data'] as List;
+        setState(() {
+          _signalements = list
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+          _loadingData = false;
+        });
+      } else {
+        setState(() => _loadingData = false);
+      }
+    } catch (_) {
+      setState(() => _loadingData = false);
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────
   Color _statusColor(String s) {
     switch (s) {
       case 'EN_COURS': return TColors.info;
@@ -57,14 +134,37 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
   }
 
   IconData _catIcon(String cat) {
-    switch (cat) {
-      case 'Voirie':        return Icons.warning_amber_rounded;
-      case 'Eclairage':     return Icons.lightbulb_outline;
-      case 'Propreté':      return Icons.delete_outline;
-      case 'Espaces Verts': return Icons.park_outlined;
-      default:              return Icons.help_outline;
-    }
+    if (cat.contains('Voirie'))   return Icons.warning_amber_rounded;
+    if (cat.contains('Eclairage')) return Icons.lightbulb_outline;
+    if (cat.contains('Propret'))  return Icons.delete_outline;
+    if (cat.contains('Espaces'))  return Icons.park_outlined;
+    return Icons.help_outline;
   }
+
+  String _catName(dynamic cat) {
+    if (cat == null) return 'Autre';
+    if (cat is Map) return cat['nom'] ?? 'Autre';
+    return cat.toString();
+  }
+
+  String _timeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes}min';
+      if (diff.inHours < 24)   return 'Il y a ${diff.inHours}h';
+      return 'Il y a ${diff.inDays}j';
+    } catch (_) { return ''; }
+  }
+
+  // ── Stats ──────────────────────────────────────────────────
+  int get _total    => _signalements.length;
+  int get _enCours  => _signalements
+    .where((s) => s['statut'] == 'EN_COURS' ||
+                  s['statut'] == 'EN_ATTENTE').length;
+  int get _resolus  => _signalements
+    .where((s) => s['statut'] == 'RESOLU').length;
 
   @override
   Widget build(BuildContext context) {
@@ -83,9 +183,13 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => Navigator.push(context,
-          MaterialPageRoute(
-            builder: (_) => const NewSignalementScreen())),
+        onPressed: () async {
+          await Navigator.push(context,
+            MaterialPageRoute(
+              builder: (_) => const NewSignalementScreen()));
+          // ── Refresh after new signalement ────────────────
+          _fetchSignalements();
+        },
         backgroundColor: TColors.primary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16)),
@@ -140,139 +244,181 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
   }
 
   Widget _homeTab(bool isDark) {
+    final recent = _signalements.take(3).toList();
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── White header ──────────────────────────────────
-          Container(
-            color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Bonjour 👋',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: TColors.textHint,
-                        fontFamily: 'Poppins',
-                      )),
-                    const Text('Amira Bouazizi',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: TColors.textPrimary,
-                        fontFamily: 'Poppins',
-                      )),
-                  ],
-                ),
-                Row(children: [
-                  Stack(children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: isDark
-                          ? TColors.darkContainer : TColors.light,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.notifications_outlined,
-                          size: 20,
-                          color: isDark
-                            ? TColors.textWhite : TColors.textPrimary),
-                        padding: EdgeInsets.zero,
-                        onPressed: () =>
-                          setState(() => _currentIndex = 3)),
-                    ),
-                    Positioned(top: 6, right: 6,
-                      child: Container(
-                        width: 9, height: 9,
+      child: RefreshIndicator(
+        onRefresh: _fetchSignalements,
+        color: TColors.primary,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+
+            // ── White header ────────────────────────────────
+            Container(
+              color: isDark ? TColors.cardDark : TColors.cardLight,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Bonjour 👋',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: TColors.textHint,
+                          fontFamily: 'Poppins',
+                        )),
+                      Text(_userName.isEmpty ? 'Citoyen' : _userName,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: TColors.textPrimary,
+                          fontFamily: 'Poppins',
+                        )),
+                    ],
+                  ),
+                  Row(children: [
+                    Stack(children: [
+                      Container(
+                        width: 40, height: 40,
                         decoration: BoxDecoration(
-                          color: TColors.primary,
+                          color: isDark
+                            ? TColors.darkContainer : TColors.light,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white, width: 1.5),
                         ),
-                      )),
+                        child: IconButton(
+                          icon: Icon(Icons.notifications_outlined,
+                            size: 20,
+                            color: isDark
+                              ? TColors.textWhite : TColors.textPrimary),
+                          padding: EdgeInsets.zero,
+                          onPressed: () =>
+                            setState(() => _currentIndex = 3)),
+                      ),
+                      Positioned(top: 6, right: 6,
+                        child: Container(
+                          width: 9, height: 9,
+                          decoration: BoxDecoration(
+                            color: TColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white, width: 1.5),
+                          ),
+                        )),
+                    ]),
+                    const SizedBox(width: 10),
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: TColors.primary,
+                      child: Text(_userInitials.isEmpty
+                        ? 'U' : _userInitials,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'Poppins',
+                        )),
+                    ),
                   ]),
-                  const SizedBox(width: 10),
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: TColors.primary,
-                    child: const Text('AB',
+                ],
+              ),
+            ),
+
+            // ── Red stats card ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: TColors.primary,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16, horizontal: 8),
+                child: Row(children: [
+                  _statItem('$_total',   'Total'),
+                  _vDivider(),
+                  _statItem('$_enCours', 'En cours'),
+                  _vDivider(),
+                  _statItem('$_resolus', 'Résolus'),
+                ]),
+              ),
+            ),
+
+            // ── Section header ──────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Récents',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: TColors.textPrimary,
+                      fontFamily: 'Poppins',
+                    )),
+                  GestureDetector(
+                    onTap: () => setState(() => _currentIndex = 1),
+                    child: const Text('Voir tout →',
                       style: TextStyle(
-                        color: Colors.white,
                         fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        color: TColors.primary,
                         fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
                       )),
                   ),
-                ]),
-              ],
-            ),
-          ),
-
-          // ── Red stats card ────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: TColors.primary,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(
-                vertical: 16, horizontal: 8),
-              child: Row(children: [
-                _statItem('4', 'Total'),
-                _vDivider(),
-                _statItem('2', 'En cours'),
-                _vDivider(),
-                _statItem('1', 'Résolus'),
-              ]),
-            ),
-          ),
-
-          // ── Section header ────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Récents',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: TColors.textPrimary,
-                    fontFamily: 'Poppins',
-                  )),
-                GestureDetector(
-                  onTap: () => setState(() => _currentIndex = 1),
-                  child: const Text('Voir tout →',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: TColors.primary,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                    )),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Signalement cards ─────────────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: _signalements.map((s) =>
-                  _card(s, isDark)).toList(),
+                ],
               ),
             ),
-          ),
-        ],
+
+            // ── Signalement cards ───────────────────────────
+            Expanded(
+              child: _loadingData
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: TColors.primary))
+                : recent.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 72, height: 72,
+                            decoration: BoxDecoration(
+                              color: TColors.primaryLight,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.flag_outlined,
+                              size: 36, color: TColors.primary)),
+                          const SizedBox(height: 16),
+                          const Text('Aucun signalement',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: TColors.textPrimary,
+                              fontFamily: 'Poppins',
+                            )),
+                          const SizedBox(height: 6),
+                          const Text('Appuyez sur + pour créer',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: TColors.textHint,
+                              fontFamily: 'Poppins',
+                            )),
+                        ],
+                      ))
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16),
+                      child: Column(
+                        children: recent.map((s) =>
+                          _card(s, isDark)).toList(),
+                      ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -294,17 +440,39 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
           ]),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _signalements.length,
-            itemBuilder: (_, i) => _card(_signalements[i], isDark),
-          ),
+          child: _loadingData
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: TColors.primary))
+            : _signalements.isEmpty
+              ? const Center(
+                  child: Text('Aucun signalement',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: TColors.textHint,
+                      fontFamily: 'Poppins',
+                    )))
+              : RefreshIndicator(
+                  onRefresh: _fetchSignalements,
+                  color: TColors.primary,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _signalements.length,
+                    itemBuilder: (_, i) =>
+                      _card(_signalements[i], isDark),
+                  ),
+                ),
         ),
       ]),
     );
   }
 
-  Widget _card(Map<String, String> s, bool isDark) {
+  Widget _card(Map<String, dynamic> s, bool isDark) {
+    final statut  = s['statut'] ?? 'EN_ATTENTE';
+    final cat     = _catName(s['categorie']);
+    final title   = s['description'] ?? 'Sans titre';
+    final time    = _timeAgo(s['createdAt']);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -318,18 +486,18 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color: _statusBg(s['status']!),
+            color: _statusBg(statut),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(_catIcon(s['cat']!),
-            size: 20, color: _statusColor(s['status']!)),
+          child: Icon(_catIcon(cat),
+            size: 20, color: _statusColor(statut)),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(s['title']!,
+              Text(title,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 14,
@@ -339,7 +507,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
                   fontFamily: 'Poppins',
                 )),
               const SizedBox(height: 3),
-              Text('${s['cat']} · ${s['time']}',
+              Text('$cat · $time',
                 style: const TextStyle(
                   fontSize: 12,
                   color: TColors.textHint,
@@ -353,14 +521,14 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen> {
           padding: const EdgeInsets.symmetric(
             horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: _statusBg(s['status']!),
+            color: _statusBg(statut),
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Text(_statusLabel(s['status']!),
+          child: Text(_statusLabel(statut),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: _statusColor(s['status']!),
+              color: _statusColor(statut),
               fontFamily: 'Poppins',
             )),
         ),

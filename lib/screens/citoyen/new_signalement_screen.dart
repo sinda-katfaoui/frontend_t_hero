@@ -6,9 +6,13 @@
 // ============================================================
 
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
 // ── Classes typées — FIX de l'erreur Null ─────────────────
 class _Cat {
@@ -16,7 +20,8 @@ class _Cat {
   final IconData icon;
   final Color    color;
   final Color    bg;
-  const _Cat(this.label, this.icon, this.color, this.bg);
+  final String   id;        // ← ADD THIS
+  const _Cat(this.label, this.icon, this.color, this.bg, this.id);
 }
 
 class _Prio {
@@ -58,21 +63,24 @@ class _NewSignalementScreenState extends State<NewSignalementScreen> {
   String  _locLabel  = 'Localisation...';
   String  _cityLabel = 'Détection en cours';
 
-  // ── Catégories — classes typées, couleurs sobres ────────
-  static const _cats = [
-    _Cat('Voirie',   Icons.warning_amber_rounded,
-      Color(0xFFB45309), Color(0xFFFEF3C7)),   // ambre
-    _Cat('Propreté', Icons.delete_outline,
-      Color(0xFF4A6741), Color(0xFFECF4E8)),   // vert olive
-    _Cat('Lumière',  Icons.lightbulb_outline,
-      Color(0xFF1E3A5F), Color(0xFFE8EEF6)),   // bleu nuit
-    _Cat('Danger',   Icons.dangerous_outlined,
-      Color(0xFFC0392B), Color(0xFFFFEBEB)),   // rouge T HERO
-    _Cat('Espaces',  Icons.park_outlined,
-      Color(0xFF2D6A4F), Color(0xFFE8F5EE)),   // vert forêt
-    _Cat('Autre',    Icons.help_outline,
-      Color(0xFF475569), Color(0xFFF1F5F9)),   // slate neutre
-  ];
+  // ── Catégories with real MongoDB IDs ──────────────────────
+static const _cats = [
+  _Cat('Voirie',        Icons.warning_amber_rounded,
+    Color(0xFFB45309), Color(0xFFFEF3C7),
+    '69b5f22c1a712fbb5e43b63e'),
+  _Cat('Eclairage',     Icons.lightbulb_outline,
+    Color(0xFF1E3A5F), Color(0xFFE8EEF6),
+    '69b5f25e1a712fbb5e43b642'),
+  _Cat('Proprete',      Icons.delete_outline,
+    Color(0xFF4A6741), Color(0xFFECF4E8),
+    '69b5f26e1a712fbb5e43b646'),
+  _Cat('Espaces Verts', Icons.park_outlined,
+    Color(0xFF2D6A4F), Color(0xFFE8F5EE),
+    '69b5f27d1a712fbb5e43b64a'),
+  _Cat('Autre',         Icons.help_outline,
+    Color(0xFF475569), Color(0xFFF1F5F9),
+    '69b5f28a1a712fbb5e43b64e'),
+];
 
   // ── Priorités — classes typées ──────────────────────────
   static const _prios = [
@@ -144,37 +152,100 @@ class _NewSignalementScreenState extends State<NewSignalementScreen> {
     }
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    if (_photo == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Veuillez ajouter une photo',
-          style: TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: const Color(0xFFC0392B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12))));
-      return;
-    }
-    setState(() => _loading = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      setState(() => _loading = false);
+Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
+  if (_priorite == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Veuillez choisir une priorité',
+        style: TextStyle(fontFamily: 'Poppins')),
+      backgroundColor: const Color(0xFFC0392B),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12))));
+    return;
+  }
+  if (_photo == null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('Veuillez ajouter une photo',
+        style: TextStyle(fontFamily: 'Poppins')),
+      backgroundColor: const Color(0xFFC0392B),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12))));
+    return;
+  }
+
+  setState(() => _loading = true);
+
+  try {
+    // ── Get token + user ───────────────────────────────────
+    final prefs     = await SharedPreferences.getInstance();
+    final token     = prefs.getString('token') ?? '';
+    final userRaw   = prefs.getString('user') ?? '{}';
+    final user      = jsonDecode(userRaw);
+    final citoyenId = user['_id'] ?? '';
+
+    // ── Multipart request ──────────────────────────────────
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(ApiConstants.createSignalement),
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['description'] = _descCtrl.text.trim();
+    request.fields['localisation'] = _locLabel;
+    request.fields['priorite']    = _priorite!;
+    request.fields['categorie']   = _cats[_catIndex].id; // real ObjectId
+    request.fields['citoyen']     = citoyenId;
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'photo', _photo!.path));
+
+    final streamed  = await request.send()
+      .timeout(const Duration(seconds: 15));
+    final response  = await http.Response.fromStream(streamed);
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (response.statusCode == 201) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Row(children: [
-          Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+          Icon(Icons.check_circle_outline,
+            color: Colors.white, size: 18),
           SizedBox(width: 8),
-          Text('Signalement envoyé !',
+          Text('Signalement envoyé avec succès !',
             style: TextStyle(fontFamily: 'Poppins')),
         ]),
         backgroundColor: const Color(0xFF2D6A4F),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12))));
-    });
+    } else {
+      final data = jsonDecode(response.body);
+      final msg  = data['message'] ?? data['error'] ?? 'Erreur envoi';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg,
+          style: const TextStyle(fontFamily: 'Poppins')),
+        backgroundColor: const Color(0xFFC0392B),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12))));
+    }
+  } catch (e) {
+    if (!mounted) return;
+    setState(() => _loading = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Erreur: ${e.toString()}',
+        style: const TextStyle(fontFamily: 'Poppins')),
+      backgroundColor: const Color(0xFFC0392B),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12))));
   }
-
+}
   // ══════════════════════════════════════════════════════
   // BUILD
   // ══════════════════════════════════════════════════════

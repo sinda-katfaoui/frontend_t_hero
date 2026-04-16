@@ -1,10 +1,10 @@
-// login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend_t_hero/screens/auth/register_screen.dart';
 import 'package:frontend_t_hero/screens/citoyen/citoyen_home_screen.dart';
 import 'package:frontend_t_hero/screens/agent/agent_home_screen.dart';
 import 'package:frontend_t_hero/screens/admin/admin_home_screen.dart';
+import 'package:frontend_t_hero/services/auth_service.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -36,20 +36,54 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  // ── REAL login — calls backend ─────────────────────────────
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      final email = _emailCtrl.text.trim().toLowerCase();
+
+    final result = await AuthService.login(
+      _emailCtrl.text,
+      _passCtrl.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _loading = false);
+
+    if (result['success']) {
+      final user = result['user'] as Map<String, dynamic>;
+      final role = user['role'] as String;
+
+      // Navigate based on real role from backend
       Widget screen;
-      if (email.contains('admin')) screen = const AdminHomeScreen();
-      else if (email.contains('agent')) screen = const AgentHomeScreen();
-      else screen = const CitoyenHomeScreen();
+      switch (role) {
+        case 'ADMIN':
+          screen = const AdminHomeScreen();
+          break;
+        case 'AGENT_MUNICIPAL':
+          screen = const AgentHomeScreen();
+          break;
+        default:
+          screen = const CitoyenHomeScreen();
+      }
+
       Navigator.pushReplacement(context,
         MaterialPageRoute(builder: (_) => screen));
-    });
+    } else {
+      // Show backend error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message'] ?? 'Erreur de connexion',
+            style: const TextStyle(
+              fontSize: 14, fontFamily: 'Poppins'),
+          ),
+          backgroundColor: TColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
 
   @override
@@ -65,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
 
-              // ── Red header — compact 30% ──────────────────
+              // ── Red header ────────────────────────────────
               Container(
                 height: size.height * 0.30,
                 decoration: const BoxDecoration(
@@ -126,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // ── Form — fills remaining 70% ────────────────
+              // ── Form ─────────────────────────────────────
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -135,12 +169,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
 
-                      // Fields group
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
 
-                          // Email field
+                          // Email
                           _fieldBox(
                             child: Row(children: [
                               const Icon(Icons.email_outlined,
@@ -181,10 +214,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Password field — RED border
+                          // Password
                           _fieldBox(
                             child: Row(children: [
-                              Icon(Icons.lock_outline,
+                              const Icon(Icons.lock_outline,
                                 size: 22, color: TColors.primary),
                               const SizedBox(width: 12),
                               Expanded(
@@ -230,7 +263,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             hasRedBorder: true,
                           ),
 
-                          // Forgot password
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
@@ -252,12 +284,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
 
-                      // Buttons group
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
 
-                          // Se connecter
+                          // Se connecter button
                           SizedBox(
                             height: 56,
                             child: ElevatedButton(
@@ -287,7 +318,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 16),
 
-                          // ou divider
                           Row(children: [
                             Expanded(child: Divider(
                               color: TColors.borderLight,
@@ -306,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           const SizedBox(height: 16),
 
-                          // Créer un compte
+                          // Créer un compte button
                           SizedBox(
                             height: 56,
                             child: OutlinedButton(
@@ -341,7 +371,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
 
-                      // Role hint
                       Center(
                         child: Text('Citoyen · Agent · Admin',
                           style: TextStyle(
@@ -360,7 +389,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Reusable field box ─────────────────────────────────────
   Widget _fieldBox({
     required Widget child,
     required bool isDark,
