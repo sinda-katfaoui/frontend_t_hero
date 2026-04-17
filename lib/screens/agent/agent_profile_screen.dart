@@ -1,32 +1,99 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/screens/auth/login_screen.dart';
-import 'package:frontend_t_hero/screens/agent/agent_analyses_ia_screen.dart';
 import 'package:frontend_t_hero/screens/agent/agent_parametres_screen.dart';
-import 'package:frontend_t_hero/screens/agent/agent_mes_signalements_screen.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
+import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
 class AgentProfileScreen extends StatefulWidget {
   const AgentProfileScreen({super.key});
   @override
-  State<AgentProfileScreen> createState() =>
-      _AgentProfileScreenState();
+  State<AgentProfileScreen> createState() => AgentProfileScreenState();
 }
 
-class _AgentProfileScreenState extends State<AgentProfileScreen> {
-  String _nom   = 'Agent Habib';
-  String _email = 'habib@thero.com';
+class AgentProfileScreenState extends State<AgentProfileScreen> {
+  String _nom = 'Agent';
+  String _email = '';
+  String _agentId = '';
+  int _total = 0;
+  int _enCours = 0;
+  int _resolus = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  void refreshStats() {
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userRaw = prefs.getString('user') ?? '{}';
+    final user = jsonDecode(userRaw);
+
+    // Set _agentId FIRST before _loadStats
+    _agentId = user['_id'] ?? '';
+
+    setState(() {
+      _nom = user['nom'] ?? 'Agent';
+      _email = user['email'] ?? '';
+    });
+
+    await _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      final response = await http
+          .get(
+            Uri.parse(ApiConstants.getAllSignalements),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = (data['data'] as List)
+            .map((e) => e as Map<String, dynamic>)
+            .toList();
+        final mine = list.where((s) {
+          final agent = s['agent'];
+          if (agent == null) return false;
+          if (agent is Map) return agent['_id'] == _agentId;
+          return agent.toString() == _agentId;
+        }).toList();
+        setState(() {
+          _total = mine.length;
+          _enCours = mine.where((s) => s['statut'] == 'EN_COURS').length;
+          _resolus = mine.where((s) => s['statut'] == 'RESOLU').length;
+        });
+      }
+    } catch (_) {}
+  }
 
   String get _initials {
     final parts = _nom.trim().split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return _nom.substring(0, 2).toUpperCase();
+    return _nom.length >= 2
+        ? _nom.substring(0, 2).toUpperCase()
+        : _nom.toUpperCase();
   }
 
+  // ── Edit name ──────────────────────────────────────────────
   void _showEditProfile() {
-    final nomCtrl   = TextEditingController(text: _nom);
-    final emailCtrl = TextEditingController(text: _email);
+    final nomCtrl = TextEditingController(text: _nom);
 
     showModalBottomSheet(
       context: context,
@@ -35,69 +102,120 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
       builder: (_) => Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: EdgeInsets.fromLTRB(
-          20, 12, 20,
-          MediaQuery.of(context).viewInsets.bottom + 24),
+          20,
+          12,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: TColors.borderLight,
-                borderRadius: BorderRadius.circular(2)),
-            )),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: TColors.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
-            const Text('Modifier mon profil',
+            const Row(
+              children: [
+                Text('✏️ ', style: TextStyle(fontSize: 20)),
+                Text(
+                  'Modifier mon nom',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: TColors.textPrimary,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Votre nom apparaîtra comme "Héros [nom]" 🦸',
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: TColors.textPrimary,
+                fontSize: 13,
+                color: TColors.textHint,
                 fontFamily: 'Poppins',
-              )),
+              ),
+            ),
             const SizedBox(height: 20),
             _field(
               controller: nomCtrl,
-              hint: 'Nom complet',
-              icon: Icons.person_outline),
-            const SizedBox(height: 10),
-            _field(
-              controller: emailCtrl,
-              hint: 'Email',
-              icon: Icons.email_outlined,
-              keyboard: TextInputType.emailAddress),
+              hint: 'Votre nom',
+              icon: Icons.person_outline,
+            ),
             const SizedBox(height: 20),
             SizedBox(
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  if (nomCtrl.text.isNotEmpty) {
-                    setState(() {
-                      _nom   = nomCtrl.text.trim();
-                      _email = emailCtrl.text.trim();
-                    });
-                    Navigator.pop(context);
-                    _showSnack('Profil mis à jour ✓',
-                      TColors.success);
+                onPressed: () async {
+                  if (nomCtrl.text.trim().isEmpty) return;
+                  final newName = nomCtrl.text.trim();
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final token = prefs.getString('token') ?? '';
+
+                    final response = await http
+                        .put(
+                          Uri.parse(
+                            '${ApiConstants.baseUrl}/users/UpdateUser/$_agentId',
+                          ),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: jsonEncode({'nom': newName}),
+                        )
+                        .timeout(const Duration(seconds: 10));
+
+                    if (response.statusCode == 200) {
+                      // Update SharedPreferences
+                      final userRaw = prefs.getString('user') ?? '{}';
+                      final user = Map<String, dynamic>.from(
+                        jsonDecode(userRaw),
+                      );
+                      user['nom'] = newName;
+                      await prefs.setString('user', jsonEncode(user));
+                      setState(() => _nom = newName);
+                      if (mounted) Navigator.pop(context);
+                      _showSnack(
+                        '🦸 Héros $newName — profil mis à jour !',
+                        TColors.success,
+                      );
+                    } else {
+                      _showSnack('Erreur serveur', TColors.error);
+                    }
+                  } catch (_) {
+                    _showSnack('Erreur serveur', TColors.error);
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
-                child: const Text('Enregistrer',
+                child: const Text(
+                  'Enregistrer',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Poppins',
-                  ))),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -105,9 +223,10 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
     );
   }
 
+  // ── Change password ────────────────────────────────────────
   void _showChangePassword() {
-    final oldCtrl     = TextEditingController();
-    final newCtrl     = TextEditingController();
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
 
     showModalBottomSheet(
@@ -117,91 +236,165 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
       builder: (_) => Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: EdgeInsets.fromLTRB(
-          20, 12, 20,
-          MediaQuery.of(context).viewInsets.bottom + 24),
+          20,
+          12,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: TColors.borderLight,
-                borderRadius: BorderRadius.circular(2)),
-            )),
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: TColors.borderLight,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
-            const Text('Changer le mot de passe',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: TColors.textPrimary,
-                fontFamily: 'Poppins',
-              )),
+            const Row(
+              children: [
+                Text('🔐 ', style: TextStyle(fontSize: 20)),
+                Text(
+                  'Changer le mot de passe',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: TColors.textPrimary,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
             const Text(
-              'Choisissez un mot de passe fort d\'au moins 8 caractères.',
+              'Protégez votre compte héros ! Min. 8 caractères.',
               style: TextStyle(
                 fontSize: 13,
                 color: TColors.textHint,
                 fontFamily: 'Poppins',
-              )),
+              ),
+            ),
             const SizedBox(height: 20),
             _field(
               controller: oldCtrl,
               hint: 'Mot de passe actuel',
               icon: Icons.lock_outline,
-              obscure: true),
+              obscure: true,
+            ),
             const SizedBox(height: 10),
             _field(
               controller: newCtrl,
               hint: 'Nouveau mot de passe',
               icon: Icons.lock_reset_outlined,
-              obscure: true),
+              obscure: true,
+            ),
             const SizedBox(height: 10),
             _field(
               controller: confirmCtrl,
               hint: 'Confirmer le nouveau mot de passe',
               icon: Icons.lock_reset_outlined,
-              obscure: true),
+              obscure: true,
+            ),
             const SizedBox(height: 20),
             SizedBox(
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  if (newCtrl.text.length < 8) {
+                onPressed: () async {
+                  if (oldCtrl.text.isEmpty) {
                     _showSnack(
-                      'Au moins 8 caractères requis',
-                      TColors.error);
+                      'Entrez votre mot de passe actuel',
+                      TColors.error,
+                    );
+                    return;
+                  }
+                  if (newCtrl.text.length < 8) {
+                    _showSnack('Au moins 8 caractères requis', TColors.error);
                     return;
                   }
                   if (newCtrl.text != confirmCtrl.text) {
                     _showSnack(
                       'Les mots de passe ne correspondent pas',
-                      TColors.error);
+                      TColors.error,
+                    );
                     return;
                   }
-                  Navigator.pop(context);
-                  _showSnack(
-                    'Mot de passe mis à jour ✓',
-                    TColors.success);
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    final token = prefs.getString('token') ?? '';
+
+                    // Step 1: verify old password by logging in
+                    final loginResponse = await http
+                        .post(
+                          Uri.parse(ApiConstants.login),
+                          headers: {'Content-Type': 'application/json'},
+                          body: jsonEncode({
+                            'email': _email,
+                            'password': oldCtrl.text,
+                          }),
+                        )
+                        .timeout(const Duration(seconds: 10));
+
+                    if (loginResponse.statusCode != 200) {
+                      _showSnack(
+                        '❌ Mot de passe actuel incorrect',
+                        TColors.error,
+                      );
+                      return;
+                    }
+
+                    // Step 2: update password
+                    final response = await http
+                        .put(
+                          Uri.parse(
+                            '${ApiConstants.baseUrl}/users/ChangePassword/$_agentId',
+                          ),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: jsonEncode({'motDePasse': newCtrl.text}),
+                        )
+                        .timeout(const Duration(seconds: 10));
+
+                    if (mounted) Navigator.pop(context);
+                    if (response.statusCode == 200) {
+                      _showSnack(
+                        '🔐 Mot de passe mis à jour ✓',
+                        TColors.success,
+                      );
+                    } else {
+                      _showSnack('Erreur serveur', TColors.error);
+                    }
+                  } catch (_) {
+                    if (mounted) Navigator.pop(context);
+                    _showSnack('Erreur serveur', TColors.error);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
-                child: const Text('Mettre à jour',
+                child: const Text(
+                  'Mettre à jour',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Poppins',
-                  ))),
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -210,195 +403,382 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-        style: const TextStyle(
-          fontSize: 13, fontFamily: 'Poppins')),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12)),
-    ));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          msg,
+          style: const TextStyle(fontSize: 13, fontFamily: 'Poppins'),
+        ),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final size   = MediaQuery.of(context).size;
 
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-
-          // ── Red Header ────────────────────────────────────
-          Container(
-            height: size.height * 0.34,
-            decoration: const BoxDecoration(
-              color: TColors.primary,
-              borderRadius: BorderRadius.only(
-                bottomLeft:  Radius.circular(32),
-                bottomRight: Radius.circular(32),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      width: 76, height: 76,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          width: 2),
-                      ),
-                      child: Center(
-                        child: Text(_initials,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Poppins',
-                          )),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: _showEditProfile,
-                      child: Container(
-                        width: 24, height: 24,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.edit,
-                          size: 13, color: TColors.primary),
-                      ),
-                    ),
-                  ],
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Hero Header ──────────────────────────────────
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [TColors.primary, Color(0xFFE53935)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(height: 10),
-                Text(_nom,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Poppins',
-                  )),
-                const SizedBox(height: 4),
-                Text(_email,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontFamily: 'Poppins',
-                  )),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+              child: Column(
+                children: [
+                  // Avatar + edit
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            width: 2.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            _initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _showEditProfile,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.edit,
+                            size: 14,
+                            color: TColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Agent Municipal',
-                    style: TextStyle(
+
+                  const SizedBox(height: 6),
+
+                  // Hero greeting
+                  Text(
+                    '🦸 Héros $_nom',
+                    style: const TextStyle(
                       color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    _email,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
                       fontSize: 12,
                       fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                    )),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  // Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Text(
+                      '⚡ Agent Municipal T HERO',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Stats
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        _statItem('$_total', 'Missions', Icons.shield_outlined),
+                        _vDiv(),
+                        _statItem('$_enCours', 'En cours', Icons.bolt_outlined),
+                        _vDiv(),
+                        _statItem(
+                          '$_resolus',
+                          'Victoires',
+                          Icons.emoji_events_outlined,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Encouragement card ───────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2D6A4F), Color(0xFF40916C)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Row(
                   children: [
-                    _stat('5', 'Assignés'),
-                    _vDiv(),
-                    _stat('3', 'En cours'),
-                    _vDiv(),
-                    _stat('2', 'Résolus'),
+                    const Text('🏆', style: TextStyle(fontSize: 28)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Merci pour votre service !',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          Text(
+                            'Vous protégez la Tunisie 🇹🇳 chaque jour.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
 
-          const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
-          // ── Menu Items ────────────────────────────────────
-          Expanded(
-            child: Padding(
+            // ── Menu ─────────────────────────────────────────
+            Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 children: [
-                  _item(context,
+                  _menuItem(
+                    emoji: '✏️',
                     icon: Icons.person_outline,
-                    label: 'Modifier mon profil',
-                    subtitle: 'Nom, email',
+                    label: 'Modifier mon nom',
+                    subtitle: 'Votre identité de héros',
                     isDark: isDark,
-                    onTap: _showEditProfile),
-                  const SizedBox(height: 8),
-                  _item(context,
+                    onTap: _showEditProfile,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  _menuItem(
+                    emoji: '🔐',
                     icon: Icons.lock_outline,
                     label: 'Changer le mot de passe',
-                    subtitle: 'Sécurité du compte',
+                    subtitle: 'Sécurisez votre compte',
                     isDark: isDark,
-                    onTap: _showChangePassword),
-                  const SizedBox(height: 8),
+                    onTap: _showChangePassword,
+                  ),
 
-  // ── FIXED: Mes signalements ────────────────
-  _item(context,
-    icon: Icons.flag_outlined,
-    label: 'Mes signalements',
-    subtitle: 'Voir mes rapports',
-    isDark: isDark,
-    onTap: () => Navigator.push(context,
-      MaterialPageRoute(
-        builder: (_) =>
-          const AgentMesSignalementsScreen()))),
-  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                  // ── FIXED: Analyses IA ─────────────────────
-                  _item(context,
-                    icon: Icons.auto_awesome_outlined,
-                    label: 'Analyses IA',
-                    subtitle: 'Rapports intelligents',
-                    isDark: isDark,
-                    onTap: () => Navigator.push(context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                          const AgentAnalysesIAScreen()))),
-                  const SizedBox(height: 8),
-
-                  // ── FIXED: Paramètres agent ────────────────
-                  _item(context,
+                  _menuItem(
+                    emoji: '⚙️',
                     icon: Icons.settings_outlined,
                     label: 'Paramètres',
-                    subtitle: 'Préférences de l\'app',
+                    subtitle: 'Préférences de l\'application',
                     isDark: isDark,
-                    onTap: () => Navigator.push(context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                          const AgentParametresScreen()))),
-
-                  Divider(
-                    color: TColors.borderLight,
-                    thickness: 0.5, height: 24),
-                  _item(context,
-                    icon: Icons.logout_rounded,
-                    label: 'Déconnexion',
-                    isDark: isDark,
-                    isRed: true,
-                    onTap: () => Navigator.pushAndRemoveUntil(
+                    onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const LoginScreen()),
-                      (r) => false)),
+                        builder: (_) => const AgentParametresScreen(),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Divider(color: TColors.borderLight, thickness: 0.5),
+
+                  const SizedBox(height: 10),
+
+                  // Logout
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.remove('token');
+                        await prefs.remove('user');
+                        if (!mounted) return;
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                          (r) => false,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: TColors.primaryLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: TColors.primary.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: TColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.logout_rounded,
+                                size: 20,
+                                color: TColors.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Déconnexion',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'Poppins',
+                                      color: TColors.primary,
+                                    ),
+                                  ),
+                                  Text(
+                                    'À bientôt, Héros ! 👋',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: TColors.textHint,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 15,
+                              color: TColors.primary,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statItem(String num, String label, IconData icon) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 16),
+          const SizedBox(height: 3),
+          Text(
+            num,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 10,
+              fontFamily: 'Poppins',
             ),
           ),
         ],
@@ -406,108 +786,84 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
     );
   }
 
-  Widget _stat(String num, String label) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(children: [
-        Text(num,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Poppins',
-          )),
-        const SizedBox(height: 2),
-        Text(label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 11,
-            fontFamily: 'Poppins',
-          )),
-      ]),
-    );
-  }
+  Widget _vDiv() => Container(
+    width: 1,
+    height: 32,
+    color: Colors.white.withValues(alpha: 0.25),
+  );
 
-  Widget _vDiv() {
-    return Container(
-      width: 1, height: 28,
-      color: Colors.white.withValues(alpha: 0.25),
-    );
-  }
-
-  Widget _item(
-    BuildContext context, {
+  Widget _menuItem({
+    required String emoji,
     required IconData icon,
     required String label,
-    String? subtitle,
+    required String subtitle,
     required bool isDark,
     required VoidCallback onTap,
-    bool isRed = false,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        splashColor: TColors.primary.withValues(alpha: 0.06),
         child: Ink(
           decoration: BoxDecoration(
-            color: isRed
-              ? TColors.primaryLight
-              : (isDark ? TColors.cardDark : TColors.cardLight),
+            color: isDark ? TColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isRed
-                ? TColors.primary.withValues(alpha: 0.2)
-                : TColors.borderLight,
-              width: 0.5),
+            border: Border.all(color: TColors.borderLight, width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16, vertical: 13),
-            child: Row(children: [
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
               Container(
-                width: 40, height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: isRed
-                    ? TColors.primaryLight
-                    : (isDark ? TColors.dark : TColors.light),
-                  borderRadius: BorderRadius.circular(12),
+                  color: TColors.primaryLight,
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                child: Icon(icon,
-                  size: 20, color: TColors.primary)),
+                child: Center(
+                  child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                ),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
+                    Text(
+                      label,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Poppins',
-                        color: isRed
-                          ? TColors.primary
-                          : (isDark
-                              ? TColors.textWhite
-                              : TColors.textPrimary),
-                      )),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: TColors.textHint,
-                          fontFamily: 'Poppins',
-                        )),
-                    ],
+                        color: isDark ? TColors.textWhite : TColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: TColors.textHint,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
                   ],
                 ),
               ),
-              if (!isRed)
-                const Icon(Icons.arrow_forward_ios,
-                  size: 15, color: TColors.grey),
-            ]),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: TColors.grey,
+              ),
+            ],
           ),
         ),
       ),
@@ -527,38 +883,38 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: TColors.borderLight, width: 0.5),
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14, vertical: 4),
-      child: Row(children: [
-        Icon(icon, size: 20, color: TColors.textHint),
-        const SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboard,
-            obscureText: obscure,
-            style: const TextStyle(
-              fontSize: 14,
-              color: TColors.textPrimary,
-              fontFamily: 'Poppins',
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: const TextStyle(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: TColors.textHint),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: keyboard,
+              obscureText: obscure,
+              style: const TextStyle(
                 fontSize: 14,
-                color: TColors.textHint,
+                color: TColors.textPrimary,
                 fontFamily: 'Poppins',
               ),
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 12),
+              decoration: InputDecoration(
+                hintText: hint,
+                hintStyle: const TextStyle(
+                  fontSize: 14,
+                  color: TColors.textHint,
+                  fontFamily: 'Poppins',
+                ),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }
