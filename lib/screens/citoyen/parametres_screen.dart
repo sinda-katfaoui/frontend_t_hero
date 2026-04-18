@@ -4,7 +4,8 @@ import 'package:frontend_t_hero/utils/constants/colors.dart';
 class ParametresScreen extends StatefulWidget {
   const ParametresScreen({super.key});
   @override
-  State<ParametresScreen> createState() => _ParametresScreenState();
+  State<ParametresScreen> createState() =>
+      _ParametresScreenState();
 }
 
 class _ParametresScreenState extends State<ParametresScreen> {
@@ -28,7 +29,8 @@ class _ParametresScreenState extends State<ParametresScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+      Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: isDark ? TColors.dark : TColors.light,
@@ -37,25 +39,97 @@ class _ParametresScreenState extends State<ParametresScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
 
-            // ── Header ──────────────────────────────────────
+            // ── Gradient Header ──────────────────────────
             Container(
-              color: isDark ? TColors.cardDark : TColors.cardLight,
-              padding: const EdgeInsets.fromLTRB(6, 8, 16, 8),
-              child: Row(children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new,
-                    size: 20,
-                    color: isDark
-                      ? TColors.textWhite : TColors.textPrimary),
-                  onPressed: () => Navigator.pop(context)),
-                Text('Paramètres',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: isDark
-                      ? TColors.textWhite : TColors.textPrimary,
-                    fontFamily: 'Poppins',
-                  )),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    TColors.primary,
+                    Color(0xFFE53935)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft:  Radius.circular(28),
+                  bottomRight: Radius.circular(28),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: TColors.primary
+                      .withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4)),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(
+                6, 8, 16, 20),
+              child: Column(children: [
+
+                // Back + title row
+                Row(children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 20, color: Colors.white),
+                    onPressed: () =>
+                      Navigator.pop(context)),
+                  const Text('Paramètres',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontFamily: 'Poppins',
+                    )),
+                ]),
+
+                const SizedBox(height: 8),
+
+                // Encouragement strip
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white
+                        .withValues(alpha: 0.15),
+                      borderRadius:
+                        BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white
+                          .withValues(alpha: 0.2))),
+                    child: Row(children: [
+                      const Text('⚙️',
+                        style: TextStyle(
+                          fontSize: 22)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Configurez votre expérience',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontFamily: 'Poppins',
+                              )),
+                            Text(
+                              'Gérez vos préférences 🌟',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white
+                                  .withValues(alpha: 0.85),
+                                fontFamily: 'Poppins',
+                              )),
+                          ],
+                        ),
+                      ),
+                    ]),
+                  ),
+                ),
               ]),
             ),
 
@@ -64,14 +138,15 @@ class _ParametresScreenState extends State<ParametresScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
 
-                  // ── Notifications ─────────────────────────
-                  _sectionTitle('Notifications', isDark),
-                  const SizedBox(height: 8),
+                  // ── Notifications ──────────────────────
+                  _sectionTitle('🔔  Notifications', isDark),
+                  const SizedBox(height: 10),
 
                   _toggle(
                     icon: Icons.notifications_outlined,
                     label: 'Activer les notifications',
-                    subtitle: 'Recevoir des alertes sur vos signalements',
+                    subtitle:
+                      'Recevoir des alertes sur vos signalements',
                     value: _notifications,
                     isDark: isDark,
                     onChanged: (v) {
@@ -79,47 +154,64 @@ class _ParametresScreenState extends State<ParametresScreen> {
                         _notifications = v;
                         if (!v) {
                           _notifSignalement = false;
-                          _notifEmail = false;
+                          _notifEmail       = false;
                         }
                       });
                       _showSnack(
-                        v ? 'Notifications activées ✓'
+                        v ? '🔔 Notifications activées ✓'
                           : 'Notifications désactivées',
                         v ? TColors.success : TColors.warning);
                     },
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   _toggle(
                     icon: Icons.flag_outlined,
-                    label: 'Notifications signalements',
-                    subtitle: 'Mises à jour de statut en temps réel',
+                    label: 'Alertes signalements',
+                    subtitle:
+                      'Mises à jour de statut en temps réel',
                     value: _notifSignalement,
                     enabled: _notifications,
                     isDark: isDark,
                     onChanged: _notifications
-                      ? (v) => setState(() => _notifSignalement = v)
+                      ? (v) {
+                          setState(
+                            () => _notifSignalement = v);
+                          _showSnack(
+                            v ? '⚡ Alertes activées ✓'
+                              : 'Alertes désactivées',
+                            v ? TColors.success
+                              : TColors.warning);
+                        }
                       : null,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   _toggle(
                     icon: Icons.email_outlined,
                     label: 'Notifications par email',
-                    subtitle: 'Recevoir un email à chaque mise à jour',
+                    subtitle:
+                      'Recevoir un email à chaque mise à jour',
                     value: _notifEmail,
                     enabled: _notifications,
                     isDark: isDark,
                     onChanged: _notifications
-                      ? (v) => setState(() => _notifEmail = v)
+                      ? (v) {
+                          setState(() => _notifEmail = v);
+                          _showSnack(
+                            v ? '📧 Email activé ✓'
+                              : 'Notifications email désactivées',
+                            v ? TColors.success
+                              : TColors.warning);
+                        }
                       : null,
                   ),
 
                   const SizedBox(height: 24),
 
-                  // ── À propos ──────────────────────────────
-                  _sectionTitle('À propos', isDark),
-                  const SizedBox(height: 8),
+                  // ── À propos ───────────────────────────
+                  _sectionTitle('ℹ️  À propos', isDark),
+                  const SizedBox(height: 10),
 
                   _infoTile(
                     icon: Icons.info_outline,
@@ -127,7 +219,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                     value: '1.0.0',
                     isDark: isDark,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   _infoTile(
                     icon: Icons.shield_outlined,
@@ -135,7 +227,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                     isDark: isDark,
                     showArrow: true,
                     onTap: () => _showDialog(
-                      'Politique de confidentialité',
+                      '🔒 Politique de confidentialité',
                       'T HERO respecte votre vie privée. '
                       'Vos données personnelles sont utilisées '
                       'uniquement pour améliorer les services '
@@ -143,7 +235,7 @@ class _ParametresScreenState extends State<ParametresScreen> {
                       'n\'est partagée avec des tiers sans '
                       'votre consentement.'),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   _infoTile(
                     icon: Icons.description_outlined,
@@ -151,31 +243,45 @@ class _ParametresScreenState extends State<ParametresScreen> {
                     isDark: isDark,
                     showArrow: true,
                     onTap: () => _showDialog(
-                      'Conditions d\'utilisation',
+                      '🌟 Conditions d\'utilisation',
                       'En utilisant T HERO, vous acceptez '
                       'de signaler uniquement des problèmes '
                       'réels et pertinents. L\'utilisation '
                       'abusive de la plateforme peut entraîner '
                       'la suspension de votre compte. '
                       'T HERO est un service public numérique '
-                      'de la ville intelligente de Tunisie.'),
+                      'de la ville intelligente de Tunisie 🇹🇳.'),
                   ),
 
                   const SizedBox(height: 32),
 
-                  // ── Branding ──────────────────────────────
+                  // ── Branding ───────────────────────────
                   Center(
                     child: Column(children: [
                       Container(
-                        width: 64, height: 64,
+                        width: 70, height: 70,
                         decoration: BoxDecoration(
-                          color: TColors.primary,
-                          borderRadius: BorderRadius.circular(20),
+                          gradient: const LinearGradient(
+                            colors: [
+                              TColors.primary,
+                              Color(0xFFE53935)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius:
+                            BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: TColors.primary
+                                .withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4)),
+                          ],
                         ),
                         child: const Center(
                           child: Text('T',
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: 34,
                               fontWeight: FontWeight.w700,
                               color: Colors.white,
                               fontFamily: 'Poppins',
@@ -183,22 +289,26 @@ class _ParametresScreenState extends State<ParametresScreen> {
                       const SizedBox(height: 12),
                       Text('T HERO',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w700,
                           color: isDark
-                            ? TColors.textWhite : TColors.textPrimary,
-                          letterSpacing: 3,
+                            ? TColors.textWhite
+                            : TColors.textPrimary,
+                          letterSpacing: 4,
                           fontFamily: 'Poppins',
                         )),
                       const SizedBox(height: 4),
-                      const Text('Smart City Guardian',
+                      const Text(
+                        '🌟 Smart City Guardian',
                         style: TextStyle(
                           fontSize: 13,
-                          color: TColors.textHint,
+                          color: TColors.primary,
                           fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w600,
                         )),
-                      const SizedBox(height: 4),
-                      const Text('© 2025 T HERO Tunisia',
+                      const SizedBox(height: 6),
+                      const Text(
+                        '© 2025 T HERO Tunisia 🇹🇳',
                         style: TextStyle(
                           fontSize: 11,
                           color: TColors.textHint,
@@ -228,13 +338,15 @@ class _ParametresScreenState extends State<ParametresScreen> {
             fontWeight: FontWeight.w700,
             fontFamily: 'Poppins',
           )),
-        content: Text(content,
-          style: const TextStyle(
-            fontSize: 14,
-            color: TColors.textSecondary,
-            fontFamily: 'Poppins',
-            height: 1.6,
-          )),
+        content: SingleChildScrollView(
+          child: Text(content,
+            style: const TextStyle(
+              fontSize: 14,
+              color: TColors.textSecondary,
+              fontFamily: 'Poppins',
+              height: 1.7,
+            )),
+        ),
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
@@ -258,10 +370,11 @@ class _ParametresScreenState extends State<ParametresScreen> {
       padding: const EdgeInsets.only(left: 4),
       child: Text(title,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: isDark ? TColors.grey : TColors.textHint,
-          letterSpacing: 0.8,
+          color: isDark
+            ? TColors.grey : TColors.textSecondary,
+          letterSpacing: 0.5,
           fontFamily: 'Poppins',
         )),
     );
@@ -278,26 +391,34 @@ class _ParametresScreenState extends State<ParametresScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? TColors.cardDark : TColors.cardLight,
+        color: isDark ? TColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-            ? const Color(0xFF2A2A2A) : TColors.borderLight,
-          width: 0.5),
+          color: enabled && value
+            ? TColors.primary.withValues(alpha: 0.3)
+            : TColors.borderLight,
+          width: enabled && value ? 1.5 : 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2)),
+        ],
       ),
       padding: const EdgeInsets.symmetric(
         horizontal: 14, vertical: 12),
       child: Row(children: [
         Container(
-          width: 42, height: 42,
+          width: 44, height: 44,
           decoration: BoxDecoration(
-            color: isDark
-              ? const Color(0xFF1A1A1A) : TColors.light,
-            borderRadius: BorderRadius.circular(12),
-          ),
+            color: enabled && value
+              ? TColors.primaryLight
+              : (isDark ? TColors.dark : TColors.light),
+            borderRadius: BorderRadius.circular(13)),
           child: Icon(icon,
             size: 20,
-            color: enabled ? TColors.primary : TColors.grey)),
+            color: enabled && value
+              ? TColors.primary : TColors.grey)),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -309,7 +430,8 @@ class _ParametresScreenState extends State<ParametresScreen> {
                   fontWeight: FontWeight.w600,
                   color: enabled
                     ? (isDark
-                        ? TColors.textWhite : TColors.textPrimary)
+                        ? TColors.textWhite
+                        : TColors.textPrimary)
                     : TColors.textHint,
                   fontFamily: 'Poppins',
                 )),
@@ -317,7 +439,8 @@ class _ParametresScreenState extends State<ParametresScreen> {
               Text(subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: isDark ? TColors.grey : TColors.textHint,
+                  color: isDark
+                    ? TColors.grey : TColors.textHint,
                   fontFamily: 'Poppins',
                 )),
             ],
@@ -329,7 +452,8 @@ class _ParametresScreenState extends State<ParametresScreen> {
           activeColor: Colors.white,
           activeTrackColor: TColors.primary,
           inactiveThumbColor: Colors.white,
-          inactiveTrackColor: TColors.grey.withValues(alpha: 0.3),
+          inactiveTrackColor:
+            TColors.grey.withValues(alpha: 0.3),
         ),
       ]),
     );
@@ -350,24 +474,26 @@ class _ParametresScreenState extends State<ParametresScreen> {
         borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
-            color: isDark ? TColors.cardDark : TColors.cardLight,
+            color: isDark ? TColors.cardDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDark
-                ? const Color(0xFF2A2A2A) : TColors.borderLight,
-              width: 0.5),
+              color: TColors.borderLight, width: 0.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: 14, vertical: 14),
             child: Row(children: [
               Container(
-                width: 42, height: 42,
+                width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: isDark
-                    ? const Color(0xFF1A1A1A) : TColors.light,
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                  color: TColors.primaryLight,
+                  borderRadius: BorderRadius.circular(13)),
                 child: Icon(icon,
                   size: 20, color: TColors.primary)),
               const SizedBox(width: 12),
@@ -377,16 +503,25 @@ class _ParametresScreenState extends State<ParametresScreen> {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: isDark
-                      ? TColors.textWhite : TColors.textPrimary,
+                      ? TColors.textWhite
+                      : TColors.textPrimary,
                     fontFamily: 'Poppins',
                   ))),
               if (value != null && value.isNotEmpty)
-                Text(value,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? TColors.grey : TColors.textHint,
-                    fontFamily: 'Poppins',
-                  )),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: TColors.primaryLight,
+                    borderRadius:
+                      BorderRadius.circular(20)),
+                  child: Text(value,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: TColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                    ))),
               if (showArrow) ...[
                 const SizedBox(width: 8),
                 const Icon(Icons.arrow_forward_ios,

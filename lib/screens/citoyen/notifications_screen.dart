@@ -15,7 +15,7 @@ class _NotificationsScreenState
     {'msg': 'Signalement pris en charge',
      'sub': 'Agent Habib · Il y a 5 min',
      'read': false, 'type': 'update'},
-    {'msg': 'Nid de poule Résolu',
+    {'msg': 'Nid de poule Résolu ✓',
      'sub': 'Il y a 1h',
      'read': false, 'type': 'done'},
     {'msg': 'Signalement Lampadaire enregistré',
@@ -29,22 +29,12 @@ class _NotificationsScreenState
   int get _unreadCount =>
     _notifs.where((n) => !(n['read'] as bool)).length;
 
-  void _markAllRead() {
-    setState(() {
-      for (final n in _notifs) n['read'] = true;
-    });
-  }
+  void _markAllRead() =>
+    setState(() { for (final n in _notifs) n['read'] = true; });
 
   void _markRead(int i) =>
     setState(() => _notifs[i]['read'] = true);
 
-  IconData _icon(String type) {
-    switch (type) {
-      case 'done':   return Icons.check_circle_outline;
-      case 'update': return Icons.access_time_rounded;
-      default:       return Icons.info_outline;
-    }
-  }
 
   Color _iconColor(String type) {
     switch (type) {
@@ -62,184 +52,302 @@ class _NotificationsScreenState
     }
   }
 
+  String _emoji(String type) {
+    switch (type) {
+      case 'done':   return '✅';
+      case 'update': return '⚡';
+      default:       return 'ℹ️';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+      Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Header ──────────────────────────────────────
+
+          // ── Gradient Header ──────────────────────────────
           Container(
-            color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Notifications',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: TColors.textPrimary,
-                    fontFamily: 'Poppins',
-                  )),
-                Row(children: [
-                  if (_unreadCount > 0) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: TColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text('$_unreadCount nouveau',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'Poppins',
-                        )),
-                    ),
-                    const SizedBox(width: 10),
-                    GestureDetector(
-                      onTap: _markAllRead,
-                      child: const Text('Tout lire',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: TColors.primary,
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                        )),
-                    ),
-                  ],
-                ]),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [TColors.primary, Color(0xFFE53935)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                bottomLeft:  Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: TColors.primary
+                    .withValues(alpha: 0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4)),
               ],
             ),
-          ),
+            padding: const EdgeInsets.fromLTRB(
+              16, 16, 16, 20),
+            child: Column(children: [
 
-          // ── Notification cards ───────────────────────────
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: List.generate(_notifs.length, (i) {
-                  final n     = _notifs[i];
-                  final unread= !(n['read'] as bool);
-                  final type  = n['type'] as String;
-                  return GestureDetector(
-                    onTap: () => _markRead(i),
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      decoration: BoxDecoration(
-                        color: unread
-                          ? TColors.primaryLight
-                          : (isDark
-                              ? TColors.cardDark
-                              : TColors.cardLight),
-                        borderRadius: BorderRadius.circular(16),
-                        border: unread
-                          ? Border(
-                              left: const BorderSide(
-                                color: TColors.primary,
-                                width: 3),
-                              top: BorderSide(
-                                color: TColors.borderLight,
-                                width: 0.5),
-                              right: BorderSide(
-                                color: TColors.borderLight,
-                                width: 0.5),
-                              bottom: BorderSide(
-                                color: TColors.borderLight,
-                                width: 0.5),
-                            )
-                          : Border.all(
-                              color: TColors.borderLight,
-                              width: 0.5),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 40, height: 40,
-                            decoration: BoxDecoration(
-                              color: unread
-                                ? TColors.primaryLight
-                                : _iconBg(type),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: unread
-                                  ? TColors.primary
-                                  : _iconColor(type)
-                                      .withValues(alpha: 0.3),
-                                width: 1.5),
-                            ),
-                            child: Icon(_icon(type),
-                              size: 18,
-                              color: unread
-                                ? TColors.primary
-                                : _iconColor(type)),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                              children: [
-                                Text(n['msg'] as String,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontFamily: 'Poppins',
-                                    fontWeight: unread
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                    color: isDark
-                                      ? TColors.textWhite
-                                      : TColors.textPrimary,
-                                  )),
-                                const SizedBox(height: 3),
-                                Text(n['sub'] as String,
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: TColors.textHint,
-                                    fontFamily: 'Poppins',
-                                  )),
-                              ],
-                            ),
-                          ),
-                          if (unread)
-                            Container(
-                              width: 9, height: 9,
-                              decoration: const BoxDecoration(
-                                color: TColors.primary,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                        ],
+              Row(
+                mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                    children: [
+                      Text('🔔 Notifications',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                        )),
+                      Text('Restez informé de vos signalements',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontFamily: 'Poppins',
+                        )),
+                    ],
+                  ),
+                  if (_unreadCount > 0)
+                    GestureDetector(
+                      onTap: _markAllRead,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.white
+                            .withValues(alpha: 0.2),
+                          borderRadius:
+                            BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white
+                              .withValues(alpha: 0.3))),
+                        child: const Text('Tout lire ✓',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Poppins',
+                          )),
                       ),
                     ),
-                  );
-                }),
+                ],
               ),
-            ),
+
+              if (_unreadCount > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white
+                      .withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white
+                        .withValues(alpha: 0.2))),
+                  child: Row(children: [
+                    const Text('📬',
+                      style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Vous avez $_unreadCount nouvelle(s) '
+                        'notification(s) non lue(s)',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                          fontWeight: FontWeight.w500,
+                        ))),
+                  ]),
+                ),
+              ],
+            ]),
           ),
 
-          // ── Mark all as read link ────────────────────────
+          const SizedBox(height: 8),
+
+          // ── List ─────────────────────────────────────────
+          Expanded(
+            child: _notifs.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment:
+                      MainAxisAlignment.center,
+                    children: [
+                      const Text('🔔',
+                        style: TextStyle(fontSize: 48)),
+                      const SizedBox(height: 16),
+                      const Text('Aucune notification',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: TColors.textPrimary,
+                          fontFamily: 'Poppins',
+                        )),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Vos alertes apparaîtront ici',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: TColors.textHint,
+                          fontFamily: 'Poppins',
+                        )),
+                    ],
+                  ))
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 8),
+                  itemCount: _notifs.length,
+                  itemBuilder: (_, i) {
+                    final n      = _notifs[i];
+                    final unread = !(n['read'] as bool);
+                    final type   = n['type'] as String;
+                    return GestureDetector(
+                      onTap: () => _markRead(i),
+                      child: Container(
+                        margin: const EdgeInsets.only(
+                          bottom: 10),
+                        decoration: BoxDecoration(
+                          color: unread
+                            ? TColors.primaryLight
+                            : (isDark
+                                ? TColors.cardDark
+                                : Colors.white),
+                          borderRadius:
+                            BorderRadius.circular(16),
+                          border: Border.all(
+                            color: unread
+                              ? TColors.primary
+                                  .withValues(alpha: 0.4)
+                              : TColors.borderLight,
+                            width: unread ? 1.5 : 0.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black
+                                .withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2)),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                          children: [
+
+                            // Icon
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: unread
+                                  ? TColors.primaryLight
+                                  : _iconBg(type),
+                                borderRadius:
+                                  BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: unread
+                                    ? TColors.primary
+                                        .withValues(alpha: 0.3)
+                                    : _iconColor(type)
+                                        .withValues(alpha: 0.2),
+                                  width: 1)),
+                              child: Center(
+                                child: Text(
+                                  _emoji(type),
+                                  style: const TextStyle(
+                                    fontSize: 20)))),
+
+                            const SizedBox(width: 12),
+
+                            // Content
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                children: [
+                                  Text(n['msg'] as String,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontFamily: 'Poppins',
+                                      fontWeight: unread
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                      color: isDark
+                                        ? TColors.textWhite
+                                        : TColors.textPrimary,
+                                    )),
+                                  const SizedBox(height: 4),
+                                  Text(n['sub'] as String,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: TColors.textHint,
+                                      fontFamily: 'Poppins',
+                                    )),
+                                ],
+                              ),
+                            ),
+
+                            // Unread dot
+                            if (unread)
+                              Container(
+                                margin: const EdgeInsets.only(
+                                  top: 4),
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(
+                                  color: TColors.primary,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: TColors.primary
+                                        .withValues(alpha: 0.4),
+                                      blurRadius: 4,
+                                      offset:
+                                        const Offset(0, 1)),
+                                  ],
+                                )),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+          ),
+
+          // ── Bottom mark all ──────────────────────────────
           if (_unreadCount > 0)
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Center(
-                child: GestureDetector(
-                  onTap: _markAllRead,
-                  child: const Text('Tout marquer comme lu',
+              padding: const EdgeInsets.fromLTRB(
+                16, 0, 16, 16),
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _markAllRead,
+                  icon: const Icon(
+                    Icons.done_all_rounded, size: 18),
+                  label: const Text(
+                    'Tout marquer comme lu',
                     style: TextStyle(
-                      fontSize: 13,
-                      color: TColors.primary,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                       fontFamily: 'Poppins',
                     )),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: TColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
                 ),
               ),
             ),

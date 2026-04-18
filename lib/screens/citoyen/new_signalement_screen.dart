@@ -1,10 +1,3 @@
-// ============================================================
-// NewSignalementScreen — CORRIGÉ + DESIGN PROFESSIONNEL
-// ✅ Fix erreur Dart : classes typées pour Cat et Prio
-// ✅ Couleurs sobres et professionnelles (thème T HERO)
-// ✅ Zéro scroll — LayoutBuilder adaptatif
-// ============================================================
-
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -14,34 +7,33 @@ import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
-// ── Classes typées — FIX de l'erreur Null ─────────────────
 class _Cat {
   final String   label;
   final IconData icon;
-  final Color    color;
-  final Color    bg;
-  final String   id;        // ← ADD THIS
-  const _Cat(this.label, this.icon, this.color, this.bg, this.id);
+  final String   id;
+  const _Cat(this.label, this.icon, this.id);
 }
 
 class _Prio {
-  final String   key;
-  final String   label;
-  final IconData icon;
-  final Color    color;
-  final Color    bg;
-  final Color    border;
-  const _Prio(this.key, this.label, this.icon,
-    this.color, this.bg, this.border);
+  final String key;
+  final String label;
+  final String emoji;
+  final Color  color;
+  final Color  bg;
+  const _Prio(this.key, this.label, this.emoji,
+    this.color, this.bg);
 }
 
-// ── Palette professionnelle T HERO ─────────────────────────
-// Rouge T HERO  : #C0392B
-// Beige fond    : #F0EDE8
-// Gris slate    : #475569
-// Bleu nuit     : #1E3A5F  (autorité, sécurité)
-// Vert olive    : #4A6741  (naturel, Tunisia)
-// Ambre chaud   : #B45309  (attention)
+const _primary   = Color(0xFFC1272D);
+const _bgPage    = Color(0xFFF8F6F3);
+const _white     = Color(0xFFFFFFFF);
+const _textMain  = Color(0xFF1E1E1E);
+const _textSub   = Color(0xFF6B6B6B);
+const _border    = Color(0xFFE5E5E5);
+const _success   = Color(0xFF2E7D32);
+const _warning   = Color(0xFFED6C02);
+const _info      = Color(0xFF1565C0);
+const _redBorder = Color(0xFFC1272D);
 
 class NewSignalementScreen extends StatefulWidget {
   const NewSignalementScreen({super.key});
@@ -50,7 +42,9 @@ class NewSignalementScreen extends StatefulWidget {
       _NewSignalementScreenState();
 }
 
-class _NewSignalementScreenState extends State<NewSignalementScreen> {
+class _NewSignalementScreenState
+    extends State<NewSignalementScreen> {
+
   final _formKey  = GlobalKey<FormState>();
   final _descCtrl = TextEditingController();
 
@@ -60,36 +54,29 @@ class _NewSignalementScreenState extends State<NewSignalementScreen> {
   bool    _loading    = false;
   bool    _gpsLoading = false;
   double? _lat;
-  String  _locLabel  = 'Localisation...';
-  String  _cityLabel = 'Détection en cours';
+  String  _locLabel   = 'Localisation en cours...';
+  String  _cityLabel  = 'Détection GPS';
 
-  // ── Catégories with real MongoDB IDs ──────────────────────
-static const _cats = [
-  _Cat('Voirie',        Icons.warning_amber_rounded,
-    Color(0xFFB45309), Color(0xFFFEF3C7),
-    '69b5f22c1a712fbb5e43b63e'),
-  _Cat('Eclairage',     Icons.lightbulb_outline,
-    Color(0xFF1E3A5F), Color(0xFFE8EEF6),
-    '69b5f25e1a712fbb5e43b642'),
-  _Cat('Proprete',      Icons.delete_outline,
-    Color(0xFF4A6741), Color(0xFFECF4E8),
-    '69b5f26e1a712fbb5e43b646'),
-  _Cat('Espaces Verts', Icons.park_outlined,
-    Color(0xFF2D6A4F), Color(0xFFE8F5EE),
-    '69b5f27d1a712fbb5e43b64a'),
-  _Cat('Autre',         Icons.help_outline,
-    Color(0xFF475569), Color(0xFFF1F5F9),
-    '69b5f28a1a712fbb5e43b64e'),
-];
+  static const _cats = [
+    _Cat('Voirie',    Icons.warning_amber_rounded,
+      '69b5f22c1a712fbb5e43b63e'),
+    _Cat('Eclairage', Icons.lightbulb_outline,
+      '69b5f25e1a712fbb5e43b642'),
+    _Cat('Propreté',  Icons.delete_outline,
+      '69b5f26e1a712fbb5e43b646'),
+    _Cat('Espaces',   Icons.park_outlined,
+      '69b5f27d1a712fbb5e43b64a'),
+    _Cat('Autre',     Icons.help_outline,
+      '69b5f28a1a712fbb5e43b64e'),
+  ];
 
-  // ── Priorités — classes typées ──────────────────────────
   static const _prios = [
-    _Prio('FAIBLE',  'Faible',  Icons.arrow_downward_rounded,
-      Color(0xFF2D6A4F), Color(0xFFE8F5EE), Color(0xFF74C69D)),
-    _Prio('MOYENNE', 'Moyenne', Icons.remove_rounded,
-      Color(0xFFB45309), Color(0xFFFEF3C7), Color(0xFFF59E0B)),
-    _Prio('ELEVEE',  'Élevée',  Icons.arrow_upward_rounded,
-      Color(0xFFC0392B), Color(0xFFFFEBEB), Color(0xFFF87171)),
+    _Prio('FAIBLE',  'Faible',  '↓',
+      Color(0xFF757575), Color(0xFFF5F5F5)),
+    _Prio('MOYENNE', 'Moyenne', '→',
+      _warning,          Color(0xFFFFF3E0)),
+    _Prio('ELEVEE',  'Élevée',  '↑',
+      _primary,          Color(0xFFFDECEC)),
   ];
 
   @override
@@ -105,13 +92,16 @@ static const _cats = [
   }
 
   Future<void> _getLocation() async {
-    setState(() { _gpsLoading = true; _locLabel = 'Localisation...'; });
+    setState(() {
+      _gpsLoading = true;
+      _locLabel   = 'Localisation en cours...';
+    });
     try {
       bool ok = await Geolocator.isLocationServiceEnabled();
       if (!ok) {
         setState(() {
-          _locLabel = 'GPS désactivé';
-          _cityLabel = 'Service indisponible';
+          _locLabel   = 'GPS désactivé';
+          _cityLabel  = 'Service indisponible';
           _gpsLoading = false;
         });
         return;
@@ -120,139 +110,143 @@ static const _cats = [
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
         if (perm == LocationPermission.denied) {
-          setState(() { _locLabel = 'Permission refusée'; _gpsLoading = false; });
+          setState(() {
+            _locLabel   = 'Permission refusée';
+            _gpsLoading = false;
+          });
           return;
         }
       }
       if (perm == LocationPermission.deniedForever) {
-        setState(() { _locLabel = 'Permission refusée'; _gpsLoading = false; });
+        setState(() {
+          _locLabel   = 'Permission refusée';
+          _gpsLoading = false;
+        });
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
       setState(() {
-        _lat = pos.latitude;
-        _locLabel  = '${pos.latitude.toStringAsFixed(4)}°N  ${pos.longitude.toStringAsFixed(4)}°E';
-        _cityLabel = 'Position détectée';
+        _lat      = pos.latitude;
+        _locLabel =
+          '${pos.latitude.toStringAsFixed(4)}°N, '
+          '${pos.longitude.toStringAsFixed(4)}°E';
+        _cityLabel  = 'Position détectée';
         _gpsLoading = false;
       });
     } catch (_) {
-      setState(() { _locLabel = 'Erreur GPS'; _gpsLoading = false; });
+      setState(() {
+        _locLabel   = 'Erreur de localisation';
+        _gpsLoading = false;
+      });
     }
   }
 
   Future<void> _pickImage(ImageSource src) async {
     try {
-      final p = await ImagePicker().pickImage(source: src, imageQuality: 80);
-      if (p != null) setState(() => _photo = File(p.path));
+      final p = await ImagePicker()
+        .pickImage(source: src, imageQuality: 80);
+      if (p != null)
+        setState(() => _photo = File(p.path));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'),
-          backgroundColor: const Color(0xFFC0392B)));
+      if (mounted) _snack('Erreur: $e', _primary);
     }
   }
 
-Future<void> _submit() async {
-  if (!_formKey.currentState!.validate()) return;
-  if (_priorite == null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Veuillez choisir une priorité',
-        style: TextStyle(fontFamily: 'Poppins')),
-      backgroundColor: const Color(0xFFC0392B),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12))));
-    return;
-  }
-  if (_photo == null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Veuillez ajouter une photo',
-        style: TextStyle(fontFamily: 'Poppins')),
-      backgroundColor: const Color(0xFFC0392B),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12))));
-    return;
-  }
-
-  setState(() => _loading = true);
-
-  try {
-    // ── Get token + user ───────────────────────────────────
-    final prefs     = await SharedPreferences.getInstance();
-    final token     = prefs.getString('token') ?? '';
-    final userRaw   = prefs.getString('user') ?? '{}';
-    final user      = jsonDecode(userRaw);
-    final citoyenId = user['_id'] ?? '';
-
-    // ── Multipart request ──────────────────────────────────
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse(ApiConstants.createSignalement),
-    );
-
-    request.headers['Authorization'] = 'Bearer $token';
-
-    request.fields['description'] = _descCtrl.text.trim();
-    request.fields['localisation'] = _locLabel;
-    request.fields['priorite']    = _priorite!;
-    request.fields['categorie']   = _cats[_catIndex].id; // real ObjectId
-    request.fields['citoyen']     = citoyenId;
-
-    request.files.add(await http.MultipartFile.fromPath(
-      'photo', _photo!.path));
-
-    final streamed  = await request.send()
-      .timeout(const Duration(seconds: 15));
-    final response  = await http.Response.fromStream(streamed);
-
-    if (!mounted) return;
-    setState(() => _loading = false);
-
-    if (response.statusCode == 201) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Row(children: [
-          Icon(Icons.check_circle_outline,
-            color: Colors.white, size: 18),
-          SizedBox(width: 8),
-          Text('Signalement envoyé avec succès !',
-            style: TextStyle(fontFamily: 'Poppins')),
-        ]),
-        backgroundColor: const Color(0xFF2D6A4F),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12))));
-    } else {
-      final data = jsonDecode(response.body);
-      final msg  = data['message'] ?? data['error'] ?? 'Erreur envoi';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg,
-          style: const TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: const Color(0xFFC0392B),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12))));
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_priorite == null) {
+      _snack('Veuillez sélectionner une priorité', _primary);
+      return;
     }
-  } catch (e) {
+    if (_photo == null) {
+      _snack('Veuillez ajouter une photo', _primary);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final prefs   = await SharedPreferences.getInstance();
+      final token   = prefs.getString('token') ?? '';
+      final userRaw = prefs.getString('user') ?? '{}';
+      final user    = jsonDecode(userRaw);
+      String citoyenId = user['_id'] ?? user['id'] ?? '';
+      if (citoyenId.isEmpty && token.isNotEmpty) {
+        try {
+          final parts = token.split('.');
+          if (parts.length == 3) {
+            final payload = parts[1];
+            final norm    = base64Url.normalize(payload);
+            final decoded =
+              utf8.decode(base64Url.decode(norm));
+            final map = jsonDecode(decoded);
+            citoyenId = map['id'] ?? '';
+          }
+        } catch (_) {}
+      }
+      final request = http.MultipartRequest(
+        'POST', Uri.parse(ApiConstants.createSignalement));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['description']  = _descCtrl.text.trim();
+      request.fields['localisation'] = _locLabel;
+      request.fields['priorite']     = _priorite!;
+      request.fields['categorie']    = _cats[_catIndex].id;
+      request.fields['citoyen']      = citoyenId;
+      request.files.add(await http.MultipartFile.fromPath(
+        'photo', _photo!.path));
+      final streamed = await request.send()
+        .timeout(const Duration(seconds: 15));
+      final response =
+        await http.Response.fromStream(streamed);
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (response.statusCode == 201) {
+        Navigator.pop(context);
+        _snack('Signalement envoyé avec succès', _success);
+      } else {
+        final data = jsonDecode(response.body);
+        _snack(data['message'] ?? 'Erreur lors de l\'envoi',
+          _primary);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _snack('Erreur de connexion', _primary);
+    }
+  }
+
+  void _snack(String msg, Color color) {
     if (!mounted) return;
-    setState(() => _loading = false);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('Erreur: ${e.toString()}',
-        style: const TextStyle(fontFamily: 'Poppins')),
-      backgroundColor: const Color(0xFFC0392B),
+      content: Text(msg,
+        style: const TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w500,
+          fontSize: 13)),
+      backgroundColor: color,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12))));
+        borderRadius: BorderRadius.circular(10)),
+    ));
   }
-}
-  // ══════════════════════════════════════════════════════
-  // BUILD
-  // ══════════════════════════════════════════════════════
+
+  BoxDecoration _cardBox() => BoxDecoration(
+    color: _white,
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: _redBorder.withValues(alpha: 0.45),
+      width: 1.5),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.03),
+        blurRadius: 4,
+        offset: const Offset(0, 2)),
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EDE8),
+      backgroundColor: _bgPage,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Form(
@@ -260,37 +254,61 @@ Future<void> _submit() async {
           child: Column(children: [
             _appBar(),
             Expanded(
-              child: LayoutBuilder(builder: (ctx, constraints) {
-                final h   = constraints.maxHeight;
-                const gap = 6.0;
-                const p   = 10.0;
-                return Padding(
-                  padding: const EdgeInsets.all(p),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(height: h * 0.13, child: _gpsCard()),
-                      const SizedBox(height: gap),
-                      SizedBox(height: h * 0.28, child: _photoCard()),
-                      const SizedBox(height: gap),
-                      SizedBox(
-                        height: h * 0.24,
-                        child: Row(children: [
-                          Expanded(child: _catCard()),
-                          const SizedBox(width: gap),
-                          Expanded(child: _descCard()),
-                        ]),
-                      ),
-                      const SizedBox(height: gap),
-                      SizedBox(height: h * 0.13, child: _prioCard()),
-                      const SizedBox(height: gap),
-                      SizedBox(height: h * 0.08, child: _submitBtn()),
-                      const SizedBox(height: gap),
-                      SizedBox(height: h * 0.06, child: _aiHint()),
-                    ],
-                  ),
-                );
-              }),
+              child: LayoutBuilder(
+                builder: (ctx, box) {
+                  final h     = box.maxHeight;
+                  final avail = h - 66;
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      12, 10, 12, 8),
+                    child: Column(
+                      crossAxisAlignment:
+                        CrossAxisAlignment.stretch,
+                      children: [
+
+                        // 1. GPS — 8%
+                        SizedBox(
+                          height: avail * 0.08,
+                          child: _gpsBar()),
+                        const SizedBox(height: 8),
+
+                        // 2. Photo — 29%
+                        SizedBox(
+                          height: avail * 0.29,
+                          child: _photoCard()),
+                        const SizedBox(height: 8),
+
+                        // 3. Description — 12%
+                        SizedBox(
+                          height: avail * 0.12,
+                          child: _descCard()),
+                        const SizedBox(height: 8),
+
+                        // 4. Categories — 15%
+                        SizedBox(
+                          height: avail * 0.15,
+                          child: _catRow()),
+                        const SizedBox(height: 8),
+
+                        // 5. Priority — 14%
+                        SizedBox(
+                          height: avail * 0.14,
+                          child: _prioRow()),
+                        const SizedBox(height: 8),
+
+                        // 6. Submit — 8%
+                        SizedBox(
+                          height: avail * 0.08,
+                          child: _submitBtn()),
+                        const SizedBox(height: 8),
+
+                        // 7. AI hint — remaining
+                        Expanded(child: _aiHint()),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ]),
         ),
@@ -301,423 +319,639 @@ Future<void> _submit() async {
   // ── AppBar ─────────────────────────────────────────────
   Widget _appBar() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 11, 16, 11),
+      decoration: const BoxDecoration(
+        color: _white,
+        border: Border(
+          bottom: BorderSide(color: _primary, width: 2))),
       child: Row(children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
             width: 32, height: 32,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF5F5F5), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F3F3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _border, width: 1)),
             child: const Icon(Icons.arrow_back_ios_new,
-              size: 13, color: Color(0xFF1A1A1A)),
+              size: 13, color: _textMain),
           ),
         ),
-        const SizedBox(width: 10),
-        const Text('Nouveau signalement',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800,
-            color: Color(0xFF1A1A1A), fontFamily: 'Poppins')),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Nouveau Signalement',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: _textMain,
+                  fontFamily: 'Poppins',
+                  letterSpacing: -0.3,
+                )),
+              Text('Ville Intelligente — Tunisie',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: _textSub,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w500,
+                )),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 9, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFDECEC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _primary.withValues(alpha: 0.4))),
+          child: const Row(children: [
+            Icon(Icons.auto_awesome,
+              size: 11, color: _primary),
+            SizedBox(width: 4),
+            Text('IA activée',
+              style: TextStyle(
+                fontSize: 10,
+                color: _primary,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
+              )),
+          ]),
+        ),
       ]),
     );
   }
 
-  // ── GPS ────────────────────────────────────────────────
-  Widget _gpsCard() {
+  // ── 1. GPS ─────────────────────────────────────────────
+  Widget _gpsBar() {
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFC0392B),
-        borderRadius: BorderRadius.circular(16)),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: _cardBox(),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(children: [
         Container(
-          width: 42, height: 42,
+          width: 28, height: 28,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(.18),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(.3))),
+            color: _lat != null ? _success : _primary,
+            shape: BoxShape.circle),
           child: _gpsLoading
-            ? const Padding(padding: EdgeInsets.all(10),
+            ? const Padding(
+                padding: EdgeInsets.all(6),
                 child: CircularProgressIndicator(
                   color: Colors.white, strokeWidth: 2))
-            : const Icon(Icons.location_on, color: Colors.white, size: 22),
+            : Icon(
+                _lat != null
+                  ? Icons.location_on
+                  : Icons.location_searching,
+                color: Colors.white, size: 14)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(_cityLabel,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: _textSub,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w600,
+                )),
+              Text(_locLabel,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: _textMain,
+                  fontFamily: 'Poppins',
+                  fontWeight: FontWeight.w700,
+                )),
+            ],
+          ),
         ),
-        const SizedBox(width: 12),
-        Expanded(child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_cityLabel,
-              style: TextStyle(color: Colors.white.withOpacity(.75),
-                fontSize: 9, fontWeight: FontWeight.w600,
-                letterSpacing: .05, fontFamily: 'Poppins')),
-            const SizedBox(height: 3),
-            Text(_locLabel,
-              style: const TextStyle(color: Colors.white,
-                fontSize: 12, fontWeight: FontWeight.w800,
-                fontFamily: 'monospace')),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.2),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: Colors.white.withOpacity(.3))),
-              child: Text(
-                _lat != null ? 'GPS actif' : 'En attente...',
-                style: const TextStyle(color: Colors.white,
-                  fontSize: 8, fontWeight: FontWeight.w600,
-                  fontFamily: 'Poppins')),
-            ),
-          ],
-        )),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: _lat != null
+              ? _success.withValues(alpha: 0.1)
+              : const Color(0xFFF3F3F3),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _lat != null
+                ? _success.withValues(alpha: 0.5)
+                : _border)),
+          child: Text(
+            _lat != null ? '✓ GPS actif' : '⏳ Attente',
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              color: _lat != null ? _success : _textSub,
+              fontFamily: 'Poppins',
+            )),
+        ),
+        const SizedBox(width: 8),
         GestureDetector(
           onTap: _getLocation,
           child: Container(
-            width: 34, height: 34,
+            width: 26, height: 26,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.18),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: Colors.white.withOpacity(.3))),
-            child: const Icon(Icons.my_location,
-              color: Colors.white, size: 16),
-          ),
+              color: const Color(0xFFF3F3F3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _border)),
+            child: const Icon(Icons.refresh_rounded,
+              color: _textSub, size: 12)),
         ),
       ]),
     );
   }
 
-  // ── Photo ──────────────────────────────────────────────
+  // ── 2. Photo ───────────────────────────────────────────
   Widget _photoCard() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE8E4DE), width: .5)),
-      padding: const EdgeInsets.all(9),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('PHOTO DU PROBLÈME',
-            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700,
-              color: Color(0xFF94A3B8), letterSpacing: .6,
-              fontFamily: 'Poppins')),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFEBEB),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFF87171))),
-            child: const Text('Requis',
-              style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700,
-                color: Color(0xFFC0392B), fontFamily: 'Poppins')),
+      decoration: _cardBox(),
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Photo du problème',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _textMain,
+                  fontFamily: 'Poppins',
+                )),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: _photo != null
+                    ? _success.withValues(alpha: 0.1)
+                    : const Color(0xFFFDECEC),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: _photo != null
+                      ? _success.withValues(alpha: 0.5)
+                      : _primary.withValues(alpha: 0.4))),
+                child: Text(
+                  _photo != null
+                    ? '✓ Photo ajoutée' : 'Obligatoire',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: _photo != null
+                      ? _success : _primary,
+                    fontFamily: 'Poppins',
+                  ))),
+            ],
           ),
-        ]),
-        const SizedBox(height: 6),
+        ),
         Expanded(
           child: GestureDetector(
             onTap: () => _pickImage(ImageSource.camera),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: _photo != null
-                  ? const Color(0xFFE8F5EE) : const Color(0xFFFAF9F7),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _photo != null
-                    ? const Color(0xFF2D6A4F)
-                    : const Color(0xFFCBD5E1),
-                  width: 1.5)),
-              child: _photo != null ? _photoPreview() : _photoEmpty(),
+            child: Padding(
+              padding: const EdgeInsets.all(7),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: _photo != null
+                  ? Stack(fit: StackFit.expand, children: [
+                      Image.file(_photo!, fit: BoxFit.cover),
+                      Positioned(
+                        bottom: 7, right: 7,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _success,
+                            borderRadius:
+                              BorderRadius.circular(7)),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check,
+                                color: Colors.white,
+                                size: 11),
+                              SizedBox(width: 4),
+                              Text('Photo OK',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Poppins')),
+                            ]))),
+                    ])
+                  : Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFAFAFA),
+                        borderRadius:
+                          BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _redBorder
+                            .withValues(alpha: 0.25),
+                          width: 1.5)),
+                      child: Column(
+                        mainAxisAlignment:
+                          MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 46, height: 46,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFFDECEC),
+                              shape: BoxShape.circle),
+                            child: const Icon(
+                              Icons.camera_alt_outlined,
+                              color: _primary, size: 22)),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Photographiez le problème',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: _textMain,
+                              fontFamily: 'Poppins',
+                            )),
+                          const SizedBox(height: 3),
+                          const Text(
+                            'Appuyez pour ouvrir la caméra',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: _textSub,
+                              fontFamily: 'Poppins',
+                            )),
+                        ],
+                      )),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        Row(children: [
-          Expanded(child: _pBtn(
-            icon: _photo != null
-              ? Icons.refresh_rounded : Icons.camera_alt_outlined,
-            label: _photo != null ? 'Reprendre' : 'Caméra',
-            bg: _photo != null
-              ? const Color(0xFFE8F5EE) : const Color(0xFFF8F9FA),
-            border: _photo != null
-              ? const Color(0xFF2D6A4F) : const Color(0xFFDDE1E7),
-            color: _photo != null
-              ? const Color(0xFF2D6A4F) : const Color(0xFF475569),
-            onTap: () => _pickImage(ImageSource.camera))),
-          const SizedBox(width: 6),
-          Expanded(child: _pBtn(
-            icon: Icons.photo_library_outlined,
-            label: 'Galerie',
-            bg: const Color(0xFFF8F9FA),
-            border: const Color(0xFFDDE1E7),
-            color: const Color(0xFF475569),
-            onTap: () => _pickImage(ImageSource.gallery))),
-        ]),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(7, 0, 7, 7),
+          child: Row(children: [
+            Expanded(child: _imgBtn(
+              icon: _photo != null
+                ? Icons.refresh_rounded
+                : Icons.camera_alt_outlined,
+              label: _photo != null
+                ? 'Reprendre' : 'Caméra',
+              onTap: () =>
+                _pickImage(ImageSource.camera))),
+            const SizedBox(width: 6),
+            Expanded(child: _imgBtn(
+              icon: Icons.photo_library_outlined,
+              label: 'Galerie',
+              onTap: () =>
+                _pickImage(ImageSource.gallery))),
+          ]),
+        ),
       ]),
     );
   }
 
-  Widget _photoPreview() => Stack(fit: StackFit.expand, children: [
-    ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Image.file(_photo!, fit: BoxFit.cover)),
-    Positioned(top: 6, right: 6,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: const Color(0xFF2D6A4F).withOpacity(.9),
-          borderRadius: BorderRadius.circular(999)),
-        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.check, color: Colors.white, size: 10),
-          SizedBox(width: 3),
-          Text('Photo ajoutée',
-            style: TextStyle(color: Colors.white,
-              fontSize: 9, fontWeight: FontWeight.w700,
-              fontFamily: 'Poppins')),
-        ]))),
-  ]);
-
-  Widget _photoEmpty() => Column(
-    mainAxisAlignment: MainAxisAlignment.center, children: [
-    Container(
-      width: 42, height: 42,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9), shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFCBD5E1))),
-      child: const Icon(Icons.camera_alt_outlined,
-        color: Color(0xFF475569), size: 20)),
-    const SizedBox(height: 7),
-    const Text('Prendre une photo',
-      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
-        color: Color(0xFF1E3A5F), fontFamily: 'Poppins')),
-    const SizedBox(height: 2),
-    const Text('Caméra ou galerie photo',
-      style: TextStyle(fontSize: 9, color: Color(0xFF94A3B8),
-        fontFamily: 'Poppins')),
-  ]);
-
-  Widget _pBtn({required IconData icon, required String label,
-    required Color bg, required Color border, required Color color,
-    required VoidCallback onTap}) {
+  Widget _imgBtn({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: border, width: 1.5)),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, color: color, size: 13),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 10,
-            fontWeight: FontWeight.w600, fontFamily: 'Poppins',
-            color: color)),
-        ]),
+          color: const Color(0xFFF3F3F3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: _redBorder.withValues(alpha: 0.35),
+            width: 1.2)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: _primary, size: 13),
+            const SizedBox(width: 5),
+            Text(label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _textMain,
+                fontFamily: 'Poppins',
+              )),
+          ],
+        ),
       ),
     );
   }
 
-  // ── Catégorie ──────────────────────────────────────────
-  Widget _catCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8E4DE), width: .5)),
-      padding: const EdgeInsets.all(8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-        const Text('CATÉGORIE',
-          style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.w700,
-            color: Color(0xFF94A3B8), letterSpacing: .5,
-            fontFamily: 'Poppins')),
-        const SizedBox(height: 5),
-        Expanded(
-          child: GridView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 4,
-              crossAxisSpacing: 4,
-              childAspectRatio: 1.05),
-            itemCount: _cats.length,
-            itemBuilder: (_, i) {
-              final cat = _cats[i];
-              final sel = i == _catIndex;
-              return GestureDetector(
-                onTap: () => setState(() => _catIndex = i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  decoration: BoxDecoration(
-                    color: cat.bg,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: sel
-                        ? cat.color : cat.color.withOpacity(.3),
-                      width: sel ? 2.0 : 1.0)),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(cat.icon, color: cat.color, size: 14),
-                      const SizedBox(height: 3),
-                      Text(cat.label,
-                        style: TextStyle(fontSize: 7,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Poppins', color: cat.color),
-                        textAlign: TextAlign.center),
-                    ]),
-                ),
-              );
-            },
-          ),
-        ),
-      ]),
-    );
-  }
-
-  // ── Description ────────────────────────────────────────
+  // ── 3. Description ─────────────────────────────────────
   Widget _descCard() {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8E4DE), width: .5)),
-      padding: const EdgeInsets.all(8),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: _cardBox(),
+      padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-        const Text('DESCRIPTION',
-          style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.w700,
-            color: Color(0xFF94A3B8), letterSpacing: .5,
-            fontFamily: 'Poppins')),
-        const SizedBox(height: 5),
-        Expanded(
-          child: TextFormField(
-            controller: _descCtrl,
-            maxLines: null,
-            expands: true,
-            textAlignVertical: TextAlignVertical.top,
-            keyboardType: TextInputType.multiline,
-            style: const TextStyle(fontSize: 11,
-              color: Color(0xFF1E3A5F), fontFamily: 'Poppins'),
-            decoration: InputDecoration(
-              hintText: 'Décrivez le problème...',
-              hintStyle: const TextStyle(color: Color(0xFFCBD5E1),
-                fontSize: 10, fontFamily: 'Poppins'),
-              filled: true,
-              fillColor: const Color(0xFFF8F9FA),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(
-                  color: Color(0xFFDDE1E7))),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(
-                  color: Color(0xFFDDE1E7))),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(9),
-                borderSide: const BorderSide(
-                  color: Color(0xFF1E3A5F), width: 1.5)),
-              contentPadding: const EdgeInsets.all(8)),
-            validator: (v) =>
-              v == null || v.trim().isEmpty ? 'Requis' : null,
-          ),
-        ),
-      ]),
-    );
-  }
-
-  // ── Priorité ───────────────────────────────────────────
-  Widget _prioCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE8E4DE), width: .5)),
-      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-        const Text('PRIORITÉ',
-          style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.w700,
-            color: Color(0xFF94A3B8), letterSpacing: .5,
-            fontFamily: 'Poppins')),
-        const SizedBox(height: 5),
-        Expanded(
-          child: Row(children: List.generate(_prios.length, (i) {
-            final p   = _prios[i];
-            final sel = _priorite == p.key;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _priorite = p.key),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  margin: EdgeInsets.only(right: i < _prios.length - 1 ? 5 : 0),
-                  decoration: BoxDecoration(
-                    color: p.bg,
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: sel ? p.color : p.border.withOpacity(.5),
-                      width: sel ? 2.0 : 1.0)),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(p.icon, color: p.color, size: 14),
-                      const SizedBox(height: 3),
-                      Text(p.label,
-                        style: TextStyle(fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'Poppins', color: p.color)),
-                    ]),
-                ),
+          const Text('Description',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _textMain,
+              fontFamily: 'Poppins',
+            )),
+          const SizedBox(height: 4),
+          Expanded(
+            child: TextFormField(
+              controller: _descCtrl,
+              maxLines: null,
+              expands: true,
+              textAlignVertical: TextAlignVertical.top,
+              keyboardType: TextInputType.multiline,
+              style: const TextStyle(
+                fontSize: 12,
+                color: _textMain,
+                fontFamily: 'Poppins'),
+              decoration: InputDecoration(
+                hintText:
+                  'Décrivez le problème observé...',
+                hintStyle: const TextStyle(
+                  color: Color(0xFFBBBBBB),
+                  fontSize: 11,
+                  fontFamily: 'Poppins'),
+                filled: true,
+                fillColor: const Color(0xFFFAFAFA),
+                contentPadding: const EdgeInsets.all(9),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: _redBorder
+                      .withValues(alpha: 0.3),
+                    width: 1)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(
+                    color: _redBorder
+                      .withValues(alpha: 0.3),
+                    width: 1)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: _primary, width: 1.8)),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(
+                    color: _primary, width: 1)),
               ),
-            );
-          })),
-        ),
-      ]),
+              validator: (v) =>
+                v == null || v.trim().isEmpty
+                  ? 'Champ requis' : null,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  // ── Submit ─────────────────────────────────────────────
+  // ── 4. Categories — bigger height, clear labels ─────────
+  Widget _catRow() {
+    return Container(
+      decoration: _cardBox(),
+      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Catégorie',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _textMain,
+              fontFamily: 'Poppins',
+            )),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Row(
+              children: List.generate(_cats.length, (i) {
+                final cat = _cats[i];
+                final sel = i == _catIndex;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () =>
+                      setState(() => _catIndex = i),
+                    child: AnimatedContainer(
+                      duration: const Duration(
+                        milliseconds: 150),
+                      margin: EdgeInsets.only(
+                        right: i < _cats.length - 1
+                          ? 5 : 0),
+                      decoration: BoxDecoration(
+                        color: sel
+                          ? _primary
+                          : const Color(0xFFF7F7F7),
+                        borderRadius:
+                          BorderRadius.circular(8),
+                        border: Border.all(
+                          color: sel
+                            ? _primary
+                            : _redBorder.withValues(
+                                alpha: 0.3),
+                          width: sel ? 1.5 : 1)),
+                      child: Column(
+                        mainAxisAlignment:
+                          MainAxisAlignment.center,
+                        children: [
+                          Icon(cat.icon,
+                            size: 18,
+                            color: sel
+                              ? Colors.white
+                              : _primary),
+                          const SizedBox(height: 4),
+                          Text(cat.label,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins',
+                              color: sel
+                                ? Colors.white
+                                : _textMain,
+                            )),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 5. Priority ────────────────────────────────────────
+  Widget _prioRow() {
+    return Container(
+      decoration: _cardBox(),
+      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Priorité',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _textMain,
+              fontFamily: 'Poppins',
+            )),
+          const SizedBox(height: 6),
+          Expanded(
+            child: Row(
+              children: List.generate(_prios.length, (i) {
+                final p   = _prios[i];
+                final sel = _priorite == p.key;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () =>
+                      setState(() => _priorite = p.key),
+                    child: AnimatedContainer(
+                      duration: const Duration(
+                        milliseconds: 150),
+                      margin: EdgeInsets.only(
+                        right: i < _prios.length - 1
+                          ? 6 : 0),
+                      decoration: BoxDecoration(
+                        color: sel
+                          ? p.bg
+                          : const Color(0xFFF7F7F7),
+                        borderRadius:
+                          BorderRadius.circular(8),
+                        border: Border.all(
+                          color: sel
+                            ? p.color
+                            : _redBorder.withValues(
+                                alpha: 0.3),
+                          width: sel ? 1.8 : 1)),
+                      child: Column(
+                        mainAxisAlignment:
+                          MainAxisAlignment.center,
+                        children: [
+                          Text(p.emoji,
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: p.color,
+                              fontWeight:
+                                FontWeight.w900)),
+                          const SizedBox(height: 3),
+                          Text(p.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins',
+                              color: sel
+                                ? p.color : _textMain,
+                            )),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 6. Submit — compact ────────────────────────────────
   Widget _submitBtn() {
-    return ElevatedButton.icon(
-      onPressed: _loading ? null : _submit,
-      icon: _loading
-        ? const SizedBox(width: 15, height: 15,
-            child: CircularProgressIndicator(
-              color: Colors.white, strokeWidth: 2))
-        : const Icon(Icons.send_rounded, size: 15),
-      label: Text(_loading ? 'Envoi en cours...' : 'Analyser et envoyer',
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800,
-          fontFamily: 'Poppins')),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFC0392B),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
-        elevation: 0),
+    return GestureDetector(
+      onTap: _loading ? null : _submit,
+      child: Container(
+        decoration: BoxDecoration(
+          color: _loading
+            ? const Color(0xFFE0E0E0) : _primary,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: _loading
+            ? []
+            : [
+                BoxShadow(
+                  color: _primary
+                    .withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3)),
+              ],
+        ),
+        child: Center(
+          child: _loading
+            ? const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF9E9E9E),
+                      strokeWidth: 2)),
+                  SizedBox(width: 8),
+                  Text('Envoi...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF9E9E9E),
+                      fontFamily: 'Poppins',
+                    )),
+                ])
+            : const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.send_rounded,
+                    color: Colors.white, size: 15),
+                  SizedBox(width: 7),
+                  Text('Envoyer le signalement',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontFamily: 'Poppins',
+                    )),
+                ]),
+        ),
+      ),
     );
   }
 
-  // ── AI Hint ────────────────────────────────────────────
+  // ── 7. AI Hint — minimal ───────────────────────────────
   Widget _aiHint() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFE8EEF6),
-        borderRadius: BorderRadius.circular(9)),
-      child: const Row(children: [
-        Icon(Icons.auto_awesome, color: Color(0xFF1E3A5F), size: 12),
-        SizedBox(width: 6),
-        Expanded(
+        color: const Color(0xFFE3F2FD),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: _info.withValues(alpha: 0.25),
+          width: 1)),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10, vertical: 4),
+      child: Row(children: [
+        const Icon(Icons.auto_awesome,
+          color: _info, size: 11),
+        const SizedBox(width: 6),
+        const Expanded(
           child: Text(
-            "L'IA analysera ta photo et attribuera la priorité automatiquement",
-            style: TextStyle(fontSize: 9, color: Color(0xFF1E3A5F),
-              fontWeight: FontWeight.w500, fontFamily: 'Poppins'))),
+            'L\'IA T HERO accélèrera la prise en charge '
+            'de votre signalement.',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              color: _info,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Poppins',
+            )),
+        ),
       ]),
     );
   }
