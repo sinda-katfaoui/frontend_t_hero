@@ -28,7 +28,6 @@ class _AdminSignalementsScreenState
     _fetchData();
   }
 
-  // ── Fetch signalements + agents ────────────────────────────
   Future<void> _fetchData() async {
     setState(() => _loading = true);
     await Future.wait([
@@ -42,7 +41,6 @@ class _AdminSignalementsScreenState
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.get(
         Uri.parse(ApiConstants.getAllSignalements),
         headers: {
@@ -50,26 +48,21 @@ class _AdminSignalementsScreenState
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final list = data['data'] as List;
         setState(() {
-          _signalements = list
+          _signalements = (data['data'] as List)
             .map((e) => e as Map<String, dynamic>)
             .toList();
         });
       }
-    } catch (e) {
-      print('Error fetching signalements: $e');
-    }
+    } catch (_) {}
   }
 
   Future<void> _fetchAgents() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.get(
         Uri.parse(ApiConstants.getAllAgents),
         headers: {
@@ -77,52 +70,46 @@ class _AdminSignalementsScreenState
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final list = data['data'] as List;
         setState(() {
-          _agents = list
+          _agents = (data['data'] as List)
             .map((e) => e as Map<String, dynamic>)
             .toList();
         });
       }
-    } catch (e) {
-      print('Error fetching agents: $e');
-    }
+    } catch (_) {}
   }
 
-  // ── Assign agent to signalement ────────────────────────────
   Future<void> _assignAgent(String signalementId,
       String agentId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.put(
         Uri.parse(
-          '${ApiConstants.baseUrl}/signalements/TraiterSignalement/$signalementId'),
+          '${ApiConstants.baseUrl}/signalements'
+          '/TraiterSignalement/$signalementId'),
         headers: {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({'agent': agentId}),
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
-        _showSnack('Agent assigné avec succès ✓', TColors.success);
+        _snack('Agent assigné ✓', TColors.success);
         await _fetchSignalements();
       } else {
         final data = jsonDecode(response.body);
-        _showSnack(
-          data['message'] ?? 'Erreur assignation', TColors.error);
+        _snack(data['message'] ?? 'Erreur', TColors.error);
       }
-    } catch (e) {
-      _showSnack('Erreur serveur', TColors.error);
+    } catch (_) {
+      _snack('Erreur serveur', TColors.error);
     }
   }
 
-  void _showSnack(String msg, Color color) {
+  void _snack(String msg, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
         style: const TextStyle(
@@ -134,7 +121,6 @@ class _AdminSignalementsScreenState
     ));
   }
 
-  // ── Helpers ────────────────────────────────────────────────
   Color _statusColor(String s) {
     switch (s) {
       case 'EN_COURS': return TColors.info;
@@ -159,25 +145,59 @@ class _AdminSignalementsScreenState
     }
   }
 
-  String _citoyenName(dynamic citoyen) {
-    if (citoyen == null) return '—';
-    if (citoyen is Map) return citoyen['nom'] ?? '—';
+  String _statusEmoji(String s) {
+    switch (s) {
+      case 'EN_COURS': return '⚡';
+      case 'RESOLU':   return '✅';
+      default:         return '⏳';
+    }
+  }
+
+  Color _prioColor(String p) {
+    switch (p) {
+      case 'ELEVEE':  return TColors.error;
+      case 'MOYENNE': return TColors.warning;
+      default:        return TColors.success;
+    }
+  }
+
+  String _prioLabel(String p) {
+    switch (p) {
+      case 'ELEVEE':  return 'Élevée';
+      case 'MOYENNE': return 'Moyenne';
+      default:        return 'Faible';
+    }
+  }
+
+  String _citoyenName(dynamic c) {
+    if (c == null) return '—';
+    if (c is Map) return c['nom'] ?? '—';
     return '—';
   }
 
-  String _agentName(dynamic agent) {
-    if (agent == null) return '—';
-    if (agent is Map) return agent['nom'] ?? '—';
+  String _agentName(dynamic a) {
+    if (a == null) return '—';
+    if (a is Map) return a['nom'] ?? '—';
     return '—';
   }
 
-  String _catName(dynamic cat) {
-    if (cat == null) return 'Autre';
-    if (cat is Map) return cat['nom'] ?? 'Autre';
+  String _catName(dynamic c) {
+    if (c == null) return 'Autre';
+    if (c is Map) return c['nom'] ?? 'Autre';
     return 'Autre';
   }
 
-  // ── Filtered list ──────────────────────────────────────────
+  String _timeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes}min';
+      if (diff.inHours < 24)   return 'Il y a ${diff.inHours}h';
+      return 'Il y a ${diff.inDays}j';
+    } catch (_) { return ''; }
+  }
+
   List<Map<String, dynamic>> get _filtered {
     if (_filter == 0) return _signalements;
     if (_filter == 1) return _signalements
@@ -186,110 +206,187 @@ class _AdminSignalementsScreenState
       .where((s) => s['statut'] == 'RESOLU').toList();
   }
 
+  int get _enAttente => _signalements
+    .where((s) => s['statut'] == 'EN_ATTENTE').length;
+  int get _enCours => _signalements
+    .where((s) => s['statut'] == 'EN_COURS').length;
+  int get _resolus => _signalements
+    .where((s) => s['statut'] == 'RESOLU').length;
+
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+      Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
 
-          // ── Header ────────────────────────────────────────
+          // ── Gradient Header ──────────────────────────────
           Container(
-            color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Signalements',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: TColors.textPrimary,
-                    fontFamily: 'Poppins',
-                  )),
-                Row(children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: TColors.primaryLight,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text('${_signalements.length} total',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: TColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                      )),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  TColors.primary,
+                  Color(0xFFE53935)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft:  Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              16, 16, 16, 20),
+            child: Column(children: [
+
+              Row(
+                mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                    children: [
+                      const Text('🚩 Signalements',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                        )),
+                      Text(
+                        '${_signalements.length} au total',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontFamily: 'Poppins',
+                        )),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  // Refresh button
                   GestureDetector(
                     onTap: _fetchData,
                     child: Container(
                       width: 36, height: 36,
                       decoration: BoxDecoration(
-                        color: TColors.primaryLight,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.refresh,
-                        color: TColors.primary, size: 20)),
+                        color: Colors.white
+                          .withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white
+                            .withValues(alpha: 0.3))),
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white, size: 17)),
                   ),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              // Stats strip
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white
+                    .withValues(alpha: 0.15),
+                  borderRadius:
+                    BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white
+                      .withValues(alpha: 0.2))),
+                child: Row(children: [
+                  _bannerStat(
+                    '${_signalements.length}',
+                    'Total',
+                    Icons.flag_outlined),
+                  _bannerDiv(),
+                  _bannerStat(
+                    '$_enAttente',
+                    'En attente',
+                    Icons.hourglass_empty_rounded),
+                  _bannerDiv(),
+                  _bannerStat(
+                    '$_enCours',
+                    'En cours',
+                    Icons.bolt_outlined),
+                  _bannerDiv(),
+                  _bannerStat(
+                    '$_resolus',
+                    'Résolus',
+                    Icons.check_circle_outline),
                 ]),
-              ],
-            ),
+              ),
+            ]),
           ),
 
-          // ── Filter Tabs ───────────────────────────────────
+          // ── Filter Tabs ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            padding: const EdgeInsets.fromLTRB(
+              16, 12, 16, 6),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
                   ? TColors.darkContainer
                   : const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(14),
-              ),
+                borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.all(4),
               child: Row(
                 children: List.generate(3, (i) => Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _filter = i),
+                    onTap: () =>
+                      setState(() => _filter = i),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(
+                        milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
                         vertical: 9),
                       decoration: BoxDecoration(
                         color: _filter == i
                           ? (isDark
                               ? TColors.cardDark
-                              : TColors.cardLight)
+                              : Colors.white)
                           : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius:
+                          BorderRadius.circular(10),
                         border: _filter == i
                           ? Border.all(
                               color: TColors.borderLight,
                               width: 0.5)
-                          : null,
-                      ),
+                          : null),
                       child: Text(_filters[i],
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           fontFamily: 'Poppins',
                           fontWeight: _filter == i
-                            ? FontWeight.w600 : FontWeight.w400,
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                           color: _filter == i
-                            ? TColors.primary : TColors.textHint,
+                            ? TColors.primary
+                            : TColors.textHint,
                         )),
                     ),
                   ),
                 )),
               ),
             ),
+          ),
+
+          // Count
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              16, 0, 16, 8),
+            child: Text(
+              '${_filtered.length} signalement(s)',
+              style: const TextStyle(
+                fontSize: 12,
+                color: TColors.textHint,
+                fontFamily: 'Poppins',
+              )),
           ),
 
           // ── List ─────────────────────────────────────────
@@ -300,15 +397,31 @@ class _AdminSignalementsScreenState
                     color: TColors.primary))
               : _filtered.isEmpty
                 ? Center(
-                    child: Text(
-                      _filter == 0
-                        ? 'Aucun signalement'
-                        : 'Aucun signalement dans cette catégorie',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: TColors.textHint,
-                        fontFamily: 'Poppins',
-                      )))
+                    child: Column(
+                      mainAxisAlignment:
+                        MainAxisAlignment.center,
+                      children: [
+                        const Text('🚩',
+                          style: TextStyle(
+                            fontSize: 48)),
+                        const SizedBox(height: 12),
+                        const Text('Aucun signalement',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: TColors.textPrimary,
+                            fontFamily: 'Poppins',
+                          )),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Aucun résultat pour ce filtre',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: TColors.textHint,
+                            fontFamily: 'Poppins',
+                          )),
+                      ],
+                    ))
                 : RefreshIndicator(
                     onRefresh: _fetchData,
                     color: TColors.primary,
@@ -327,169 +440,342 @@ class _AdminSignalementsScreenState
   }
 
   Widget _card(Map<String, dynamic> s, bool isDark) {
-    final statut  = s['statut'] ?? 'EN_ATTENTE';
-    final agentObj = s['agent'];
+    final statut       = s['statut'] ?? 'EN_ATTENTE';
+    final prio         = s['priorite'] ?? 'FAIBLE';
+    final agentObj     = s['agent'];
     final isUnassigned = agentObj == null;
-    final agentNom = _agentName(agentObj);
-    final citoyenNom = _citoyenName(s['citoyen']);
-    final catNom = _catName(s['categorie']);
-    final signalementId = s['_id'] ?? '';
+    final agentNom     = _agentName(agentObj);
+    final citoyenNom   = _citoyenName(s['citoyen']);
+    final catNom       = _catName(s['categorie']);
+    final desc         = s['description'] ?? '—';
+    final time         = _timeAgo(s['createdAt']);
+    final id           = s['_id'] ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isDark ? TColors.cardDark : TColors.cardLight,
+        color: isDark ? TColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: TColors.borderLight, width: 0.5),
+        border: Border.all(
+          color: TColors.borderLight, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2)),
+        ],
       ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Column(children: [
 
-          // Title + status
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Top colored strip
+        Container(
+          padding: const EdgeInsets.fromLTRB(
+            14, 12, 14, 10),
+          decoration: BoxDecoration(
+            color: _statusBg(statut),
+            borderRadius: const BorderRadius.only(
+              topLeft:  Radius.circular(16),
+              topRight: Radius.circular(16))),
+          child: Row(children: [
+            Text(_statusEmoji(statut),
+              style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(desc,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark
+                    ? TColors.textWhite
+                    : TColors.textPrimary,
+                  fontFamily: 'Poppins',
+                ))),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white
+                  .withValues(alpha: 0.7),
+                borderRadius:
+                  BorderRadius.circular(20)),
+              child: Text(_statusLabel(statut),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: _statusColor(statut),
+                  fontFamily: 'Poppins',
+                ))),
+          ]),
+        ),
+
+        // Body
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            14, 10, 14, 12),
+          child: Column(
+            crossAxisAlignment:
+              CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  s['description'] ?? 'Sans description',
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: isDark
-                      ? TColors.textWhite : TColors.textPrimary,
-                    fontFamily: 'Poppins',
-                  ))),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _statusBg(statut),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(_statusLabel(statut),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _statusColor(statut),
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'Poppins',
-                  ))),
-            ],
-          ),
 
-          const SizedBox(height: 6),
-
-          // Citoyen + category
-          Text('$citoyenNom · $catNom',
-            style: const TextStyle(
-              fontSize: 13,
-              color: TColors.textHint,
-              fontFamily: 'Poppins',
-            )),
-
-          const SizedBox(height: 8),
-
-          // Agent + assign button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              // Info row
               Row(children: [
-                const Icon(Icons.engineering_outlined,
-                  size: 16, color: TColors.textSecondary),
-                const SizedBox(width: 6),
-                Text(isUnassigned ? 'Non assigné' : agentNom,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isUnassigned
-                      ? TColors.warning : TColors.textSecondary,
-                    fontWeight: isUnassigned
-                      ? FontWeight.w600 : FontWeight.w400,
+                const Icon(Icons.person_outline,
+                  size: 13, color: TColors.textHint),
+                const SizedBox(width: 4),
+                Text(citoyenNom,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: TColors.textHint,
+                    fontFamily: 'Poppins',
+                  )),
+                const SizedBox(width: 10),
+                const Icon(Icons.category_outlined,
+                  size: 13, color: TColors.textHint),
+                const SizedBox(width: 4),
+                Text(catNom,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: TColors.textHint,
+                    fontFamily: 'Poppins',
+                  )),
+                const Spacer(),
+                Text(time,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: TColors.textHint,
                     fontFamily: 'Poppins',
                   )),
               ]),
 
-              if (statut != 'RESOLU')
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _showAssignDialog(signalementId),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Ink(
+              const SizedBox(height: 8),
+
+              // Priority + agent row
+              Row(
+                mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+                children: [
+
+                  // Priority
+                  Row(children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(
+                        color: _prioColor(prio),
+                        shape: BoxShape.circle)),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Priorité ${_prioLabel(prio)}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _prioColor(prio),
+                        fontFamily: 'Poppins',
+                      )),
+                  ]),
+
+                  // Agent chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: isUnassigned
+                        ? TColors.warningLight
+                        : TColors.infoLight,
+                      borderRadius:
+                        BorderRadius.circular(20)),
+                    child: Row(children: [
+                      Icon(
+                        isUnassigned
+                          ? Icons.person_off_outlined
+                          : Icons.engineering_outlined,
+                        size: 11,
+                        color: isUnassigned
+                          ? TColors.warning
+                          : TColors.info),
+                      const SizedBox(width: 4),
+                      Text(
+                        isUnassigned
+                          ? 'Non assigné'
+                          : agentNom,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isUnassigned
+                            ? TColors.warning
+                            : TColors.info,
+                          fontFamily: 'Poppins',
+                        )),
+                    ]),
+                  ),
+                ],
+              ),
+
+              // Assign button
+              if (statut != 'RESOLU') ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: GestureDetector(
+                    onTap: () =>
+                      _showAssignDialog(id),
+                    child: Container(
+                      padding:
+                        const EdgeInsets.symmetric(
+                          vertical: 9),
                       decoration: BoxDecoration(
                         color: isUnassigned
-                          ? TColors.primary : TColors.info,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 7),
-                        child: Text(
-                          isUnassigned ? 'Assigner' : 'Réassigner',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Poppins',
-                          )),
+                          ? TColors.primary
+                          : TColors.info
+                              .withValues(alpha: 0.1),
+                        borderRadius:
+                          BorderRadius.circular(10),
+                        border: isUnassigned
+                          ? null
+                          : Border.all(
+                              color: TColors.info
+                                .withValues(alpha: 0.4),
+                              width: 1)),
+                      child: Row(
+                        mainAxisAlignment:
+                          MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isUnassigned
+                              ? Icons.person_add_outlined
+                              : Icons
+                                  .swap_horiz_rounded,
+                            size: 15,
+                            color: isUnassigned
+                              ? Colors.white
+                              : TColors.info),
+                          const SizedBox(width: 6),
+                          Text(
+                            isUnassigned
+                              ? 'Assigner un agent'
+                              : 'Réassigner',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                FontWeight.w700,
+                              color: isUnassigned
+                                ? Colors.white
+                                : TColors.info,
+                              fontFamily: 'Poppins',
+                            )),
+                        ],
                       ),
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
-  // ── Assign dialog with real agents ────────────────────────
   void _showAssignDialog(String signalementId) {
     String? selectedAgentId;
-
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (ctx, setD) => AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20)),
-          title: const Text('Assigner un agent',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Poppins',
-            )),
+          title: const Row(children: [
+            Text('🦸 ', style: TextStyle(fontSize: 18)),
+            Text('Assigner un agent',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
+              )),
+          ]),
           content: _agents.isEmpty
-            ? const Text(
-                'Aucun agent disponible',
+            ? const Text('Aucun agent disponible',
                 style: TextStyle(
                   fontSize: 14,
                   color: TColors.textHint,
-                  fontFamily: 'Poppins',
-                ))
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: _agents.map((agent) {
-                  final agentId  = agent['_id'] ?? '';
-                  final agentNom = agent['nom'] ?? '—';
-                  return RadioListTile<String>(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(agentNom,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontFamily: 'Poppins',
-                      )),
-                    value: agentId,
-                    groupValue: selectedAgentId,
-                    activeColor: TColors.primary,
-                    onChanged: (v) =>
-                      setDialogState(() => selectedAgentId = v),
-                  );
-                }).toList(),
+                  fontFamily: 'Poppins'))
+            : SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: _agents.map((agent) {
+                    final agentId  = agent['_id'] ?? '';
+                    final agentNom = agent['nom'] ?? '—';
+                    final sel = selectedAgentId == agentId;
+                    return GestureDetector(
+                      onTap: () =>
+                        setD(() => selectedAgentId = agentId),
+                      child: AnimatedContainer(
+                        duration: const Duration(
+                          milliseconds: 150),
+                        margin: const EdgeInsets.only(
+                          bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: sel
+                            ? TColors.primaryLight
+                            : TColors.light,
+                          borderRadius:
+                            BorderRadius.circular(12),
+                          border: Border.all(
+                            color: sel
+                              ? TColors.primary
+                              : TColors.borderLight,
+                            width: sel ? 1.5 : 0.5)),
+                        child: Row(children: [
+                          Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: sel
+                                ? TColors.primaryLight
+                                : TColors.infoLight,
+                              shape: BoxShape.circle),
+                            child: Center(
+                              child: Text(
+                                agentNom.isNotEmpty
+                                  ? agentNom[0]
+                                      .toUpperCase()
+                                  : '?',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight:
+                                    FontWeight.w700,
+                                  color: sel
+                                    ? TColors.primary
+                                    : TColors.info,
+                                  fontFamily: 'Poppins',
+                                )))),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(agentNom,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: sel
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                                color: sel
+                                  ? TColors.primary
+                                  : TColors.textPrimary,
+                                fontFamily: 'Poppins',
+                              ))),
+                          if (sel)
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: TColors.primary,
+                              size: 20),
+                        ]),
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
           actions: [
             TextButton(
@@ -498,30 +784,61 @@ class _AdminSignalementsScreenState
                 style: TextStyle(
                   fontSize: 14,
                   color: TColors.textHint,
-                  fontFamily: 'Poppins',
-                ))),
+                  fontFamily: 'Poppins'))),
             ElevatedButton(
               onPressed: selectedAgentId != null
                 ? () {
                     Navigator.pop(context);
-                    _assignAgent(signalementId, selectedAgentId!);
+                    _assignAgent(
+                      signalementId, selectedAgentId!);
                   }
                 : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: TColors.primary,
                 foregroundColor: Colors.white,
+                disabledBackgroundColor:
+                  TColors.borderLight,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-                elevation: 0,
-              ),
+                  borderRadius:
+                    BorderRadius.circular(12)),
+                elevation: 0),
               child: const Text('Confirmer',
                 style: TextStyle(
                   fontSize: 14,
-                  fontFamily: 'Poppins',
-                ))),
+                  fontFamily: 'Poppins'))),
           ],
         ),
       ),
     );
   }
+
+  Widget _bannerStat(String num, String label,
+      IconData icon) {
+    return Expanded(
+      child: Column(children: [
+        Icon(icon,
+          color: Colors.white.withValues(alpha: 0.8),
+          size: 14),
+        const SizedBox(height: 3),
+        Text(num,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontFamily: 'Poppins',
+          )),
+        const SizedBox(height: 1),
+        Text(label,
+          style: TextStyle(
+            fontSize: 8,
+            color: Colors.white.withValues(alpha: 0.75),
+            fontFamily: 'Poppins',
+          )),
+      ]),
+    );
+  }
+
+  Widget _bannerDiv() => Container(
+    width: 1, height: 28,
+    color: Colors.white.withValues(alpha: 0.2));
 }

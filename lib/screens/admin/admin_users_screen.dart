@@ -8,7 +8,8 @@ import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 class AdminUsersScreen extends StatefulWidget {
   const AdminUsersScreen({super.key});
   @override
-  State<AdminUsersScreen> createState() => _AdminUsersScreenState();
+  State<AdminUsersScreen> createState() =>
+      _AdminUsersScreenState();
 }
 
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
@@ -24,13 +25,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     _fetchUsers();
   }
 
-  // ── GET all users ──────────────────────────────────────────
   Future<void> _fetchUsers() async {
     setState(() => _loading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.get(
         Uri.parse(ApiConstants.getAllUsers),
         headers: {
@@ -38,12 +37,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final list = data['data'] as List;
         setState(() {
-          _users = list
+          _users = (data['data'] as List)
             .map((e) => e as Map<String, dynamic>)
             .toList();
           _loading = false;
@@ -51,33 +48,24 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       } else {
         setState(() => _loading = false);
       }
-    } catch (e) {
+    } catch (_) {
       setState(() => _loading = false);
     }
   }
 
-  // ── POST create user ───────────────────────────────────────
   Future<void> _createUser(String nom, String email,
       String motDePasse, String role) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
-      String url = role == 'AGENT_MUNICIPAL'
+      final url   = role == 'AGENT_MUNICIPAL'
         ? ApiConstants.createAgent
         : ApiConstants.createUser;
-
-      final body = role == 'AGENT_MUNICIPAL'
-        ? {
-            'nom': nom, 'email': email,
-            'motDePasse': motDePasse,
-            'code_Agent': 1234,
-          }
-        : {
-            'nom': nom, 'email': email,
-            'motDePasse': motDePasse,
-          };
-
+      final body  = role == 'AGENT_MUNICIPAL'
+        ? { 'nom': nom, 'email': email,
+            'motDePasse': motDePasse, 'code_Agent': 1234 }
+        : { 'nom': nom, 'email': email,
+            'motDePasse': motDePasse };
       final response = await http.post(
         Uri.parse(url),
         headers: {
@@ -86,104 +74,68 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         },
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 201) {
-        _showSnack('Utilisateur ajouté avec succès ✓',
-          TColors.success);
+        _snack('Utilisateur ajouté ✓', TColors.success);
         await _fetchUsers();
       } else {
         final data = jsonDecode(response.body);
-        _showSnack(
-          data['message'] ?? 'Erreur création', TColors.error);
+        _snack(data['message'] ?? 'Erreur', TColors.error);
       }
-    } catch (e) {
-      _showSnack('Erreur serveur', TColors.error);
+    } catch (_) {
+      _snack('Erreur serveur', TColors.error);
     }
   }
 
-  // ── PUT update user ────────────────────────────────────────
   Future<void> _updateUser(String id, String nom,
       String email) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.put(
-        Uri.parse('${ApiConstants.baseUrl}/users/UpdateUser/$id'),
+        Uri.parse(
+          '${ApiConstants.baseUrl}/users/UpdateUser/$id'),
         headers: {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({'nom': nom, 'email': email}),
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
-        _showSnack('Utilisateur modifié ✓', TColors.success);
+        _snack('Utilisateur modifié ✓', TColors.success);
         await _fetchUsers();
       } else {
-        final data = jsonDecode(response.body);
-        _showSnack(
-          data['message'] ?? 'Erreur modification', TColors.error);
+        _snack('Erreur modification', TColors.error);
       }
-    } catch (e) {
-      _showSnack('Erreur serveur', TColors.error);
+    } catch (_) {
+      _snack('Erreur serveur', TColors.error);
     }
   }
 
-  // ── PUT toggle isBlocked ───────────────────────────────────
-  Future<void> _toggleBlock(String id, bool currentlyBlocked) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token') ?? '';
-
-      final response = await http.put(
-        Uri.parse('${ApiConstants.baseUrl}/users/UpdateUser/$id'),
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({'isBlocked': !currentlyBlocked}),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        _showSnack(
-          currentlyBlocked ? 'Compte activé ✓' : 'Compte désactivé',
-          currentlyBlocked ? TColors.success : TColors.warning);
-        await _fetchUsers();
-      } else {
-        _showSnack('Erreur mise à jour', TColors.error);
-      }
-    } catch (e) {
-      _showSnack('Erreur serveur', TColors.error);
-    }
-  }
-
-  // ── DELETE user ────────────────────────────────────────────
   Future<void> _deleteUser(String id) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
-
       final response = await http.delete(
-        Uri.parse('${ApiConstants.baseUrl}/users/DeleteUser/$id'),
+        Uri.parse(
+          '${ApiConstants.baseUrl}/users/DeleteUser/$id'),
         headers: {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer $token',
         },
       ).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
-        _showSnack('Utilisateur supprimé', TColors.success);
+        _snack('Utilisateur supprimé', TColors.success);
         await _fetchUsers();
       } else {
-        _showSnack('Erreur suppression', TColors.error);
+        _snack('Erreur suppression', TColors.error);
       }
-    } catch (e) {
-      _showSnack('Erreur serveur', TColors.error);
+    } catch (_) {
+      _snack('Erreur serveur', TColors.error);
     }
   }
 
-  void _showSnack(String msg, Color color) {
+  void _snack(String msg, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg,
         style: const TextStyle(
@@ -195,7 +147,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     ));
   }
 
-  // ── Helpers ────────────────────────────────────────────────
   Color _roleColor(String r) {
     switch (r) {
       case 'ADMIN':           return TColors.primary;
@@ -220,16 +171,22 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
+  String _roleEmoji(String r) {
+    switch (r) {
+      case 'ADMIN':           return '🛡️';
+      case 'AGENT_MUNICIPAL': return '🦸';
+      default:                return '👤';
+    }
+  }
+
   String _initials(String nom) {
     final parts = nom.trim().split(' ');
-    if (parts.length >= 2) {
+    if (parts.length >= 2)
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
     return nom.length >= 2
       ? nom.substring(0, 2).toUpperCase() : nom.toUpperCase();
   }
 
-  // ── Filtered list ──────────────────────────────────────────
   List<Map<String, dynamic>> get _filtered {
     if (_filter == 0) return _users;
     if (_filter == 1) return _users
@@ -238,7 +195,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       .where((u) => u['role'] == 'AGENT_MUNICIPAL').toList();
   }
 
-  // ── Add user dialog ────────────────────────────────────────
+  int get _citoyens =>
+    _users.where((u) => u['role'] == 'CITOYEN').length;
+  int get _agents =>
+    _users.where((u) => u['role'] == 'AGENT_MUNICIPAL').length;
+
   void _showAddDialog() {
     final nomCtrl   = TextEditingController();
     final emailCtrl = TextEditingController();
@@ -250,12 +211,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => StatefulBuilder(
-        builder: (context, setSheet) => Container(
+        builder: (ctx, setSheet) => Container(
           decoration: const BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.vertical(
-              top: Radius.circular(28)),
-          ),
+              top: Radius.circular(28))),
           padding: EdgeInsets.fromLTRB(
             20, 12, 20,
             MediaQuery.of(context).viewInsets.bottom + 24),
@@ -270,24 +230,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   borderRadius: BorderRadius.circular(2)),
               )),
               const SizedBox(height: 16),
-              const Text('Ajouter un utilisateur',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: TColors.textPrimary,
-                  fontFamily: 'Poppins',
-                )),
+              const Row(children: [
+                Text('➕ ', style: TextStyle(fontSize: 18)),
+                Text('Ajouter un utilisateur',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: TColors.textPrimary,
+                    fontFamily: 'Poppins',
+                  )),
+              ]),
               const SizedBox(height: 20),
-
               // Role selector
-              const Text('Rôle',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: TColors.textSecondary,
-                  fontFamily: 'Poppins',
-                )),
-              const SizedBox(height: 8),
               Row(children: [
                 'CITOYEN', 'AGENT_MUNICIPAL',
               ].map((role) {
@@ -303,30 +257,32 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                       decoration: BoxDecoration(
                         color: active
                           ? _roleBg(role) : TColors.light,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius:
+                          BorderRadius.circular(12),
                         border: Border.all(
                           color: active
                             ? _roleColor(role)
                             : TColors.borderLight,
-                          width: active ? 1.5 : 0.5),
-                      ),
+                          width: active ? 1.5 : 0.5)),
                       child: Text(
                         role == 'CITOYEN'
-                          ? 'Citoyen' : 'Agent Municipal',
+                          ? '👤 Citoyen'
+                          : '🦸 Agent',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: active
-                            ? FontWeight.w600 : FontWeight.w400,
+                            ? FontWeight.w700
+                            : FontWeight.w400,
                           color: active
-                            ? _roleColor(role) : TColors.textHint,
+                            ? _roleColor(role)
+                            : TColors.textHint,
                           fontFamily: 'Poppins',
                         )),
                     ),
                   ),
                 );
               }).toList()),
-
               const SizedBox(height: 16),
               _sheetField(
                 controller: nomCtrl,
@@ -345,7 +301,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 icon: Icons.lock_outline,
                 obscure: true),
               const SizedBox(height: 20),
-
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
@@ -358,17 +313,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         nomCtrl.text.trim(),
                         emailCtrl.text.trim(),
                         passCtrl.text.trim(),
-                        selectedRole,
-                      );
+                        selectedRole);
                     }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: TColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
-                  ),
+                      borderRadius:
+                        BorderRadius.circular(16)),
+                    elevation: 0),
                   child: const Text('Ajouter',
                     style: TextStyle(
                       fontSize: 15,
@@ -383,11 +337,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
-  // ── Edit user dialog ───────────────────────────────────────
   void _showEditDialog(Map<String, dynamic> u) {
-    final nomCtrl   = TextEditingController(text: u['nom'] ?? '');
-    final emailCtrl = TextEditingController(text: u['email'] ?? '');
-
+    final nomCtrl   =
+      TextEditingController(text: u['nom'] ?? '');
+    final emailCtrl =
+      TextEditingController(text: u['email'] ?? '');
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -396,8 +350,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28)),
-        ),
+            top: Radius.circular(28))),
         padding: EdgeInsets.fromLTRB(
           20, 12, 20,
           MediaQuery.of(context).viewInsets.bottom + 24),
@@ -412,13 +365,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 borderRadius: BorderRadius.circular(2)),
             )),
             const SizedBox(height: 16),
-            const Text('Modifier l\'utilisateur',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: TColors.textPrimary,
-                fontFamily: 'Poppins',
-              )),
+            const Row(children: [
+              Text('✏️ ', style: TextStyle(fontSize: 18)),
+              Text('Modifier l\'utilisateur',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: TColors.textPrimary,
+                  fontFamily: 'Poppins',
+                )),
+            ]),
             const SizedBox(height: 20),
             _sheetField(
               controller: nomCtrl,
@@ -440,17 +396,16 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     _updateUser(
                       u['_id'],
                       nomCtrl.text.trim(),
-                      emailCtrl.text.trim(),
-                    );
+                      emailCtrl.text.trim());
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
+                    borderRadius:
+                      BorderRadius.circular(16)),
+                  elevation: 0),
                 child: const Text('Enregistrer',
                   style: TextStyle(
                     fontSize: 15,
@@ -464,7 +419,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
-  // ── Delete confirmation ────────────────────────────────────
   void _showDeleteDialog(Map<String, dynamic> u) {
     showDialog(
       context: context,
@@ -483,8 +437,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               fontSize: 14,
               color: TColors.textSecondary,
               fontFamily: 'Poppins',
-              height: 1.5,
-            ),
+              height: 1.5),
             children: [
               const TextSpan(text: 'Supprimer '),
               TextSpan(
@@ -493,9 +446,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   fontWeight: FontWeight.w700,
                   color: TColors.textPrimary)),
               const TextSpan(
-                text: ' ? Cette action est irréversible.'),
-            ],
-          )),
+                text: ' ? Action irréversible.'),
+            ])),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -503,83 +455,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               style: TextStyle(
                 fontSize: 14,
                 color: TColors.textHint,
-                fontFamily: 'Poppins',
-              ))),
+                fontFamily: 'Poppins'))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: TColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
+              elevation: 0),
             onPressed: () {
               Navigator.pop(context);
               _deleteUser(u['_id']);
             },
             child: const Text('Supprimer',
               style: TextStyle(
-                fontSize: 14,
-                fontFamily: 'Poppins',
-              ))),
-        ],
-      ),
-    );
-  }
-
-  // ── Toggle block confirmation ──────────────────────────────
-  void _showToggleDialog(Map<String, dynamic> u) {
-    final isBlocked = u['isBlocked'] == true;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          isBlocked ? 'Activer le compte' : 'Désactiver le compte',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            fontFamily: 'Poppins',
-          )),
-        content: Text(
-          isBlocked
-            ? 'L\'utilisateur pourra à nouveau se connecter.'
-            : 'L\'utilisateur ne pourra plus se connecter.',
-          style: const TextStyle(
-            fontSize: 14,
-            color: TColors.textSecondary,
-            fontFamily: 'Poppins',
-            height: 1.5,
-          )),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler',
-              style: TextStyle(
-                fontSize: 14,
-                color: TColors.textHint,
-                fontFamily: 'Poppins',
-              ))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isBlocked
-                ? TColors.success : TColors.warning,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              _toggleBlock(u['_id'], isBlocked);
-            },
-            child: Text(
-              isBlocked ? 'Activer' : 'Désactiver',
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily: 'Poppins',
-              ))),
+                fontSize: 14, fontFamily: 'Poppins'))),
         ],
       ),
     );
@@ -587,7 +477,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+      Theme.of(context).brightness == Brightness.dark;
     final filtered = _filtered;
 
     return SafeArea(
@@ -595,121 +486,168 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
 
-          // ── Header ────────────────────────────────────────
+          // ── Gradient Header ──────────────────────────────
           Container(
-            color: isDark ? TColors.cardDark : TColors.cardLight,
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Utilisateurs',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: TColors.textPrimary,
-                        fontFamily: 'Poppins',
-                      )),
-                    Text('${_users.length} comptes au total',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: TColors.textHint,
-                        fontFamily: 'Poppins',
-                      )),
-                  ],
-                ),
-                Row(children: [
-                  // Refresh
-                  GestureDetector(
-                    onTap: _fetchUsers,
-                    child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration(
-                        color: TColors.primaryLight,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.refresh,
-                        color: TColors.primary, size: 20)),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  TColors.primary,
+                  Color(0xFFE53935)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft:  Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              16, 16, 16, 20),
+            child: Column(children: [
+
+              Row(
+                mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                    children: [
+                      Text('👥 Utilisateurs',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                        )),
+                      Text('Gérez les comptes',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontFamily: 'Poppins',
+                        )),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  // Add button
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _showAddDialog,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Ink(
+                  Row(children: [
+                    GestureDetector(
+                      onTap: _fetchUsers,
+                      child: Container(
+                        width: 36, height: 36,
                         decoration: BoxDecoration(
-                          color: TColors.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                          child: Row(children: [
-                            Icon(Icons.add,
-                              color: Colors.white, size: 18),
-                            SizedBox(width: 6),
-                            Text('Ajouter',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'Poppins',
-                              )),
-                          ]),
-                        ),
+                          color: Colors.white
+                            .withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white
+                              .withValues(alpha: 0.3))),
+                        child: const Icon(
+                          Icons.refresh_rounded,
+                          color: Colors.white,
+                          size: 17)),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _showAddDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius:
+                            BorderRadius.circular(20)),
+                        child: const Row(children: [
+                          Icon(Icons.add,
+                            color: TColors.primary,
+                            size: 16),
+                          SizedBox(width: 5),
+                          Text('Ajouter',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: TColors.primary,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins',
+                            )),
+                        ]),
                       ),
                     ),
-                  ),
+                  ]),
+                ],
+              ),
+
+              const SizedBox(height: 14),
+
+              // Stats strip
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white
+                    .withValues(alpha: 0.15),
+                  borderRadius:
+                    BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white
+                      .withValues(alpha: 0.2))),
+                child: Row(children: [
+                  _bannerStat('${_users.length}',
+                    'Total', Icons.people_outline),
+                  _bannerDiv(),
+                  _bannerStat('$_citoyens',
+                    'Citoyens', Icons.person_outline),
+                  _bannerDiv(),
+                  _bannerStat('$_agents',
+                    'Agents',
+                    Icons.engineering_outlined),
                 ]),
-              ],
-            ),
+              ),
+            ]),
           ),
 
-          // ── Filter Tabs ───────────────────────────────────
+          // ── Filter Tabs ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+            padding: const EdgeInsets.fromLTRB(
+              16, 12, 16, 6),
             child: Container(
               decoration: BoxDecoration(
                 color: isDark
                   ? TColors.darkContainer
                   : const Color(0xFFEEEEEE),
-                borderRadius: BorderRadius.circular(14),
-              ),
+                borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.all(4),
               child: Row(
                 children: List.generate(3, (i) => Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _filter = i),
+                    onTap: () =>
+                      setState(() => _filter = i),
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(
+                        milliseconds: 200),
                       padding: const EdgeInsets.symmetric(
-                        vertical: 10),
+                        vertical: 9),
                       decoration: BoxDecoration(
                         color: _filter == i
                           ? (isDark
                               ? TColors.cardDark
-                              : TColors.cardLight)
+                              : Colors.white)
                           : Colors.transparent,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius:
+                          BorderRadius.circular(10),
                         border: _filter == i
                           ? Border.all(
                               color: TColors.borderLight,
                               width: 0.5)
-                          : null,
-                      ),
+                          : null),
                       child: Text(_filters[i],
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,
                           fontFamily: 'Poppins',
                           fontWeight: _filter == i
-                            ? FontWeight.w600 : FontWeight.w400,
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                           color: _filter == i
-                            ? TColors.primary : TColors.textHint,
+                            ? TColors.primary
+                            : TColors.textHint,
                         )),
                     ),
                   ),
@@ -718,20 +656,53 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             ),
           ),
 
-          // ── User List ─────────────────────────────────────
+          // ── User count ───────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              16, 0, 16, 8),
+            child: Text(
+              '${filtered.length} utilisateur(s)',
+              style: const TextStyle(
+                fontSize: 12,
+                color: TColors.textHint,
+                fontFamily: 'Poppins',
+              )),
+          ),
+
+          // ── List ─────────────────────────────────────────
           Expanded(
             child: _loading
               ? const Center(
                   child: CircularProgressIndicator(
                     color: TColors.primary))
               : filtered.isEmpty
-                ? const Center(
-                    child: Text('Aucun utilisateur',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: TColors.textHint,
-                        fontFamily: 'Poppins',
-                      )))
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment:
+                        MainAxisAlignment.center,
+                      children: [
+                        const Text('👥',
+                          style: TextStyle(
+                            fontSize: 48)),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Aucun utilisateur',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: TColors.textPrimary,
+                            fontFamily: 'Poppins',
+                          )),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Ajoutez un compte pour commencer',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: TColors.textHint,
+                            fontFamily: 'Poppins',
+                          )),
+                      ],
+                    ))
                 : RefreshIndicator(
                     onRefresh: _fetchUsers,
                     color: TColors.primary,
@@ -750,130 +721,98 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   }
 
   Widget _userCard(Map<String, dynamic> u, bool isDark) {
-    final isBlocked = u['isBlocked'] == true;
-    final isAdmin   = u['role'] == 'ADMIN';
-    final nom       = u['nom'] ?? '';
-    final email     = u['email'] ?? '';
-    final role      = u['role'] ?? 'CITOYEN';
+    final isAdmin = u['role'] == 'ADMIN';
+    final nom     = u['nom']   ?? '';
+    final email   = u['email'] ?? '';
+    final role    = u['role']  ?? 'CITOYEN';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isBlocked
-          ? (isDark
-              ? TColors.darkContainer
-              : const Color(0xFFF5F5F5))
-          : (isDark ? TColors.cardDark : TColors.cardLight),
+        color: isDark ? TColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: TColors.borderLight, width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2)),
+        ],
       ),
       padding: const EdgeInsets.symmetric(
         horizontal: 14, vertical: 12),
       child: Row(children: [
 
-        // Avatar with active dot
-        Stack(children: [
-          Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(
-              color: isBlocked
-                ? TColors.lightContainer : _roleBg(role),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(_initials(nom),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isBlocked
-                    ? TColors.textHint : _roleColor(role),
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'Poppins',
-                )),
-            ),
-          ),
-          Positioned(
-            bottom: 1, right: 1,
-            child: Container(
-              width: 12, height: 12,
-              decoration: BoxDecoration(
-                color: isBlocked
-                  ? TColors.grey : TColors.success,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white, width: 1.5),
-              ),
-            ),
-          ),
-        ]),
+        // Avatar
+        Container(
+          width: 46, height: 46,
+          decoration: BoxDecoration(
+            color: _roleBg(role),
+            shape: BoxShape.circle),
+          child: Center(
+            child: Text(_initials(nom),
+              style: TextStyle(
+                fontSize: 14,
+                color: _roleColor(role),
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
+              ))),
+        ),
 
         const SizedBox(width: 12),
 
-        // Info
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(nom,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isBlocked
-                    ? TColors.textHint
-                    : (isDark
-                        ? TColors.textWhite : TColors.textPrimary),
-                  fontFamily: 'Poppins',
-                )),
+              Row(children: [
+                Text(_roleEmoji(role),
+                  style: const TextStyle(fontSize: 12)),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(nom,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isDark
+                        ? TColors.textWhite
+                        : TColors.textPrimary,
+                      fontFamily: 'Poppins',
+                    ))),
+              ]),
               const SizedBox(height: 2),
               Text(email,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: TColors.textHint,
                   fontFamily: 'Poppins',
                 )),
-              if (isBlocked) ...[
-                const SizedBox(height: 3),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: TColors.warningLight,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('Désactivé',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: TColors.warning,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Poppins',
-                    ))),
-              ],
             ],
           ),
         ),
+
+        const SizedBox(width: 8),
 
         // Role pill
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: isBlocked
-              ? TColors.lightContainer : _roleBg(role),
-            borderRadius: BorderRadius.circular(20),
-          ),
+            color: _roleBg(role),
+            borderRadius: BorderRadius.circular(20)),
           child: Text(_roleLabel(role),
             style: TextStyle(
               fontSize: 11,
-              color: isBlocked
-                ? TColors.textHint : _roleColor(role),
-              fontWeight: FontWeight.w600,
+              color: _roleColor(role),
+              fontWeight: FontWeight.w700,
               fontFamily: 'Poppins',
-            )),
-        ),
+            ))),
 
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
 
-        // Action menu
+        // Actions
         if (!isAdmin)
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert,
@@ -883,7 +822,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             elevation: 2,
             onSelected: (value) {
               if (value == 'edit')   _showEditDialog(u);
-              if (value == 'toggle') _showToggleDialog(u);
               if (value == 'delete') _showDeleteDialog(u);
             },
             itemBuilder: (_) => [
@@ -895,23 +833,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                   SizedBox(width: 10),
                   Text('Modifier',
                     style: TextStyle(
-                      fontSize: 14, fontFamily: 'Poppins')),
-                ])),
-              PopupMenuItem(
-                value: 'toggle',
-                child: Row(children: [
-                  Icon(
-                    isBlocked
-                      ? Icons.check_circle_outline
-                      : Icons.block_outlined,
-                    size: 18,
-                    color: isBlocked
-                      ? TColors.success : TColors.warning),
-                  const SizedBox(width: 10),
-                  Text(
-                    isBlocked ? 'Activer' : 'Désactiver',
-                    style: const TextStyle(
-                      fontSize: 14, fontFamily: 'Poppins')),
+                      fontSize: 14,
+                      fontFamily: 'Poppins')),
                 ])),
               const PopupMenuItem(
                 value: 'delete',
@@ -931,6 +854,36 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
+  Widget _bannerStat(String num, String label,
+      IconData icon) {
+    return Expanded(
+      child: Column(children: [
+        Icon(icon,
+          color: Colors.white.withValues(alpha: 0.8),
+          size: 15),
+        const SizedBox(height: 3),
+        Text(num,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+            fontFamily: 'Poppins',
+          )),
+        const SizedBox(height: 1),
+        Text(label,
+          style: TextStyle(
+            fontSize: 9,
+            color: Colors.white.withValues(alpha: 0.75),
+            fontFamily: 'Poppins',
+          )),
+      ]),
+    );
+  }
+
+  Widget _bannerDiv() => Container(
+    width: 1, height: 28,
+    color: Colors.white.withValues(alpha: 0.2));
+
   Widget _sheetField({
     required TextEditingController controller,
     required String hint,
@@ -942,8 +895,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       decoration: BoxDecoration(
         color: TColors.light,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: TColors.borderLight, width: 0.5),
-      ),
+        border: Border.all(
+          color: TColors.borderLight, width: 0.5)),
       padding: const EdgeInsets.symmetric(
         horizontal: 14, vertical: 4),
       child: Row(children: [
@@ -957,22 +910,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             style: const TextStyle(
               fontSize: 14,
               color: TColors.textPrimary,
-              fontFamily: 'Poppins',
-            ),
+              fontFamily: 'Poppins'),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(
                 fontSize: 14,
                 color: TColors.textHint,
-                fontFamily: 'Poppins',
-              ),
+                fontFamily: 'Poppins'),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                vertical: 12),
-            ),
+                vertical: 12)),
           ),
         ),
       ]),
