@@ -1,62 +1,181 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
+import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
   @override
-  State<NotificationsScreen> createState() =>
-      _NotificationsScreenState();
+  NotificationsScreenState createState() =>
+      NotificationsScreenState();
 }
 
-class _NotificationsScreenState
+class NotificationsScreenState
     extends State<NotificationsScreen> {
 
-  final List<Map<String, dynamic>> _notifs = [
-    {'msg': 'Signalement pris en charge',
-     'sub': 'Agent Habib · Il y a 5 min',
-     'read': false, 'type': 'update'},
-    {'msg': 'Nid de poule Résolu ✓',
-     'sub': 'Il y a 1h',
-     'read': false, 'type': 'done'},
-    {'msg': 'Signalement Lampadaire enregistré',
-     'sub': 'Hier 18:30',
-     'read': true, 'type': 'info'},
-    {'msg': 'Déchets Sousse résolu avec succès',
-     'sub': 'Il y a 3j',
-     'read': true, 'type': 'done'},
-  ];
+  List<Map<String, dynamic>> _notifs = [];
+  bool _loading = true;
+  String _userId = '';
+  String _token  = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAndFetch();
+  }
+
+  // ✅ Fixed: reload everything if token not ready yet
+  void refresh() {
+    if (_token.isEmpty || _userId.isEmpty) {
+      _loadAndFetch();
+    } else {
+      _fetchNotifs(_token, _userId);
+    }
+  }
+
+  Future<void> _loadAndFetch() async {
+    final prefs   = await SharedPreferences.getInstance();
+    final token   = prefs.getString('token') ?? '';
+    final userRaw = prefs.getString('user') ?? '{}';
+    final user    = jsonDecode(userRaw);
+
+    String uid = user['_id'] ?? user['id'] ?? '';
+    if (uid.isEmpty && token.isNotEmpty) {
+      try {
+        final parts = token.split('.');
+        if (parts.length == 3) {
+          final norm    = base64Url.normalize(parts[1]);
+          final decoded =
+            utf8.decode(base64Url.decode(norm));
+          uid = jsonDecode(decoded)['id'] ?? '';
+        }
+      } catch (_) {}
+    }
+
+    setState(() {
+      _userId = uid;
+      _token  = token;
+    });
+    await _fetchNotifs(token, uid);
+  }
+
+  Future<void> _fetchNotifs(String token, String uid) async {
+    if (uid.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${ApiConstants.baseUrl}/notifications'
+          '/GetNotificationsByCitoyen/$uid'),
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      debugPrint('Notif status: ${response.statusCode}');
+      debugPrint('Notif body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final list = data['data'] as List? ?? [];
+        setState(() {
+          _notifs = list
+            .map((e) => e as Map<String, dynamic>)
+            .toList()
+            ..sort((a, b) {
+              final da = DateTime.tryParse(
+                a['createdAt'] ?? '') ?? DateTime(0);
+              final db = DateTime.tryParse(
+                b['createdAt'] ?? '') ?? DateTime(0);
+              return db.compareTo(da);
+            });
+          _loading = false;
+        });
+      } else {
+        setState(() { _notifs = []; _loading = false; });
+      }
+    } catch (e) {
+      debugPrint('Notif fetch error: $e');
+      setState(() { _notifs = []; _loading = false; });
+    }
+  }
+
+  Future<void> _markRead(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+      await http.put(
+        Uri.parse(
+          '${ApiConstants.baseUrl}/notifications'
+          '/UpdateNotification/$id'),
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'lu': true}),
+      ).timeout(const Duration(seconds: 10));
+      setState(() {
+        final i = _notifs.indexWhere(
+          (n) => n['_id'] == id);
+        if (i != -1) _notifs[i]['lu'] = true;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _markAllRead() async {
+    for (final n in _notifs) {
+      if (!(n['lu'] as bool? ?? false)) {
+        await _markRead(n['_id'] ?? '');
+      }
+    }
+  }
 
   int get _unreadCount =>
-    _notifs.where((n) => !(n['read'] as bool)).length;
+    _notifs.where((n) =>
+      !(n['lu'] as bool? ?? false)).length;
 
-  void _markAllRead() =>
-    setState(() { for (final n in _notifs) n['read'] = true; });
+  String _timeAgo(String? dateStr) {
+    if (dateStr == null) return '';
+    try {
+      final date = DateTime.parse(dateStr);
+      final diff = DateTime.now().difference(date);
+      if (diff.inMinutes < 1)  return 'À l\'instant';
+      if (diff.inMinutes < 60)
+        return 'Il y a ${diff.inMinutes}min';
+      if (diff.inHours < 24)
+        return 'Il y a ${diff.inHours}h';
+      if (diff.inDays == 1) return 'Hier';
+      return 'Il y a ${diff.inDays}j';
+    } catch (_) { return ''; }
+  }
 
-  void _markRead(int i) =>
-    setState(() => _notifs[i]['read'] = true);
-
-
-  Color _iconColor(String type) {
+  String _emoji(String? type) {
     switch (type) {
-      case 'done':   return TColors.success;
-      case 'update': return TColors.primary;
-      default:       return TColors.info;
+      case 'RESOLU':   return '✅';
+      case 'EN_COURS': return '⚡';
+      default:         return 'ℹ️';
     }
   }
 
-  Color _iconBg(String type) {
+  Color _iconColor(String? type) {
     switch (type) {
-      case 'done':   return TColors.successLight;
-      case 'update': return TColors.primaryLight;
-      default:       return TColors.infoLight;
+      case 'RESOLU':   return TColors.success;
+      case 'EN_COURS': return TColors.primary;
+      default:         return TColors.info;
     }
   }
 
-  String _emoji(String type) {
+  Color _iconBg(String? type) {
     switch (type) {
-      case 'done':   return '✅';
-      case 'update': return '⚡';
-      default:       return 'ℹ️';
+      case 'RESOLU':   return TColors.successLight;
+      case 'EN_COURS': return TColors.primaryLight;
+      default:         return TColors.infoLight;
     }
   }
 
@@ -70,7 +189,6 @@ class _NotificationsScreenState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
 
-          // ── Gradient Header ──────────────────────────────
           Container(
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -109,7 +227,8 @@ class _NotificationsScreenState
                           color: Colors.white,
                           fontFamily: 'Poppins',
                         )),
-                      Text('Restez informé de vos signalements',
+                      Text(
+                        'Restez informé de vos signalements',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.white70,
@@ -160,8 +279,8 @@ class _NotificationsScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Vous avez $_unreadCount nouvelle(s) '
-                        'notification(s) non lue(s)',
+                        'Vous avez $_unreadCount '
+                        'nouvelle(s) non lue(s)',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.white,
@@ -176,154 +295,202 @@ class _NotificationsScreenState
 
           const SizedBox(height: 8),
 
-          // ── List ─────────────────────────────────────────
           Expanded(
-            child: _notifs.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment:
-                      MainAxisAlignment.center,
-                    children: [
-                      const Text('🔔',
-                        style: TextStyle(fontSize: 48)),
-                      const SizedBox(height: 16),
-                      const Text('Aucune notification',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: TColors.textPrimary,
-                          fontFamily: 'Poppins',
-                        )),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Vos alertes apparaîtront ici',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: TColors.textHint,
-                          fontFamily: 'Poppins',
-                        )),
-                    ],
-                  ))
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
-                  itemCount: _notifs.length,
-                  itemBuilder: (_, i) {
-                    final n      = _notifs[i];
-                    final unread = !(n['read'] as bool);
-                    final type   = n['type'] as String;
-                    return GestureDetector(
-                      onTap: () => _markRead(i),
-                      child: Container(
-                        margin: const EdgeInsets.only(
-                          bottom: 10),
-                        decoration: BoxDecoration(
-                          color: unread
-                            ? TColors.primaryLight
-                            : (isDark
-                                ? TColors.cardDark
-                                : Colors.white),
-                          borderRadius:
-                            BorderRadius.circular(16),
-                          border: Border.all(
-                            color: unread
-                              ? TColors.primary
-                                  .withValues(alpha: 0.4)
-                              : TColors.borderLight,
-                            width: unread ? 1.5 : 0.5),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black
-                                .withValues(alpha: 0.03),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2)),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(14),
-                        child: Row(
-                          crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                          children: [
-
-                            // Icon
-                            Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: unread
-                                  ? TColors.primaryLight
-                                  : _iconBg(type),
-                                borderRadius:
-                                  BorderRadius.circular(13),
-                                border: Border.all(
-                                  color: unread
-                                    ? TColors.primary
-                                        .withValues(alpha: 0.3)
-                                    : _iconColor(type)
-                                        .withValues(alpha: 0.2),
-                                  width: 1)),
-                              child: Center(
-                                child: Text(
-                                  _emoji(type),
-                                  style: const TextStyle(
-                                    fontSize: 20)))),
-
-                            const SizedBox(width: 12),
-
-                            // Content
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                                children: [
-                                  Text(n['msg'] as String,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontFamily: 'Poppins',
-                                      fontWeight: unread
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                      color: isDark
-                                        ? TColors.textWhite
-                                        : TColors.textPrimary,
-                                    )),
-                                  const SizedBox(height: 4),
-                                  Text(n['sub'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: TColors.textHint,
-                                      fontFamily: 'Poppins',
-                                    )),
-                                ],
-                              ),
-                            ),
-
-                            // Unread dot
-                            if (unread)
-                              Container(
-                                margin: const EdgeInsets.only(
-                                  top: 4),
-                                width: 10, height: 10,
-                                decoration: BoxDecoration(
+            child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    color: TColors.primary))
+              : _notifs.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment:
+                        MainAxisAlignment.center,
+                      children: [
+                        const Text('🔔',
+                          style: TextStyle(fontSize: 48)),
+                        const SizedBox(height: 16),
+                        const Text('Aucune notification',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: TColors.textPrimary,
+                            fontFamily: 'Poppins',
+                          )),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Vos alertes apparaîtront ici',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: TColors.textHint,
+                            fontFamily: 'Poppins',
+                          )),
+                        const SizedBox(height: 20),
+                        GestureDetector(
+                          onTap: () =>
+                            _fetchNotifs(_token, _userId),
+                          child: Container(
+                            padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10),
+                            decoration: BoxDecoration(
+                              color: TColors.primaryLight,
+                              borderRadius:
+                                BorderRadius.circular(14)),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.refresh_rounded,
                                   color: TColors.primary,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: TColors.primary
-                                        .withValues(alpha: 0.4),
-                                      blurRadius: 4,
-                                      offset:
-                                        const Offset(0, 1)),
-                                  ],
-                                )),
-                          ],
+                                  size: 16),
+                                SizedBox(width: 6),
+                                Text('Actualiser',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: TColors.primary,
+                                    fontWeight:
+                                      FontWeight.w600,
+                                    fontFamily: 'Poppins',
+                                  )),
+                              ]),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ))
+                : RefreshIndicator(
+                    onRefresh: () async =>
+                      _fetchNotifs(_token, _userId),
+                    color: TColors.primary,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                      itemCount: _notifs.length,
+                      itemBuilder: (_, i) {
+                        final n      = _notifs[i];
+                        final unread =
+                          !(n['lu'] as bool? ?? false);
+                        final type = n['type'] as String?;
+                        final msg  =
+                          n['message'] ?? 'Notification';
+                        final time =
+                          _timeAgo(n['createdAt']);
+                        final id = n['_id'] ?? '';
+
+                        return GestureDetector(
+                          onTap: () => _markRead(id),
+                          child: Container(
+                            margin: const EdgeInsets.only(
+                              bottom: 10),
+                            decoration: BoxDecoration(
+                              color: unread
+                                ? TColors.primaryLight
+                                : (isDark
+                                    ? TColors.cardDark
+                                    : Colors.white),
+                              borderRadius:
+                                BorderRadius.circular(16),
+                              border: Border.all(
+                                color: unread
+                                  ? TColors.primary
+                                      .withValues(alpha: 0.4)
+                                  : TColors.borderLight,
+                                width: unread ? 1.5 : 0.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                    .withValues(alpha: 0.03),
+                                  blurRadius: 8,
+                                  offset:
+                                    const Offset(0, 2)),
+                              ]),
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                              children: [
+
+                                Container(
+                                  width: 44, height: 44,
+                                  decoration: BoxDecoration(
+                                    color: unread
+                                      ? TColors.primaryLight
+                                      : _iconBg(type),
+                                    borderRadius:
+                                      BorderRadius.circular(
+                                        13),
+                                    border: Border.all(
+                                      color: unread
+                                        ? TColors.primary
+                                            .withValues(
+                                              alpha: 0.3)
+                                        : _iconColor(type)
+                                            .withValues(
+                                              alpha: 0.2),
+                                      width: 1)),
+                                  child: Center(
+                                    child: Text(
+                                      _emoji(type),
+                                      style: const TextStyle(
+                                        fontSize: 20)))),
+
+                                const SizedBox(width: 12),
+
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                      CrossAxisAlignment
+                                        .start,
+                                    children: [
+                                      Text(msg,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontFamily: 'Poppins',
+                                          fontWeight: unread
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                          color: isDark
+                                            ? TColors.textWhite
+                                            : TColors
+                                                .textPrimary,
+                                        )),
+                                      const SizedBox(height: 4),
+                                      Text(time,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: TColors.textHint,
+                                          fontFamily: 'Poppins',
+                                        )),
+                                    ],
+                                  ),
+                                ),
+
+                                if (unread)
+                                  Container(
+                                    margin:
+                                      const EdgeInsets.only(
+                                        top: 4),
+                                    width: 10, height: 10,
+                                    decoration: BoxDecoration(
+                                      color: TColors.primary,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: TColors.primary
+                                            .withValues(
+                                              alpha: 0.4),
+                                          blurRadius: 4,
+                                          offset: const Offset(
+                                            0, 1)),
+                                      ])),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
 
-          // ── Bottom mark all ──────────────────────────────
           if (_unreadCount > 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -345,7 +512,8 @@ class _NotificationsScreenState
                     backgroundColor: TColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius:
+                        BorderRadius.circular(14)),
                     elevation: 0,
                   ),
                 ),

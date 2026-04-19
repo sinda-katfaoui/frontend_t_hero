@@ -20,13 +20,16 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     with TickerProviderStateMixin {
 
   int _currentIndex = 0;
-  int _filterIndex  = 0; // 0=Tous 1=En cours 2=Résolus
+  int _filterIndex  = 0;
 
   List<Map<String, dynamic>> _signalements = [];
   bool   _loadingData  = true;
   String _userName     = '';
   String _userInitials = '';
   String _userId       = '';
+
+  // ✅ GlobalKey to call refresh on NotificationsScreen
+  final _notifKey = GlobalKey<NotificationsScreenState>();
 
   late AnimationController _bannerCtrl;
   late Animation<double>   _bannerAnim;
@@ -53,7 +56,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     super.dispose();
   }
 
-  // ── Extract ID from JWT ────────────────────────────────────
   String _extractIdFromToken(String token) {
     try {
       final parts = token.split('.');
@@ -137,7 +139,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────
   Color _statusColor(String s) {
     switch (s) {
       case 'EN_COURS': return TColors.info;
@@ -231,7 +232,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     return _signalements;
   }
 
-  // ── Detail sheet ───────────────────────────────────────────
   void _showDetail(Map<String, dynamic> s) {
     final statut    = s['statut'] ?? 'EN_ATTENTE';
     final cat       = _catName(s['categorie']);
@@ -262,7 +262,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
             top: Radius.circular(28)),
         ),
         child: Column(children: [
-
           Center(child: Container(
             margin: const EdgeInsets.only(top: 12),
             width: 40, height: 4,
@@ -270,17 +269,12 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
               color: TColors.borderLight,
               borderRadius: BorderRadius.circular(2)),
           )),
-
-          // Gradient header
           Container(
-            margin: const EdgeInsets.fromLTRB(
-              16, 12, 16, 0),
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [
-                  TColors.primary,
-                  Color(0xFFE53935)],
+                colors: [TColors.primary, Color(0xFFE53935)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -290,10 +284,8 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
               Container(
                 width: 52, height: 52,
                 decoration: BoxDecoration(
-                  color: Colors.white
-                    .withValues(alpha: 0.2),
-                  borderRadius:
-                    BorderRadius.circular(16)),
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(16)),
                 child: Icon(_catIcon(cat),
                   color: Colors.white, size: 26)),
               const SizedBox(width: 14),
@@ -314,17 +306,14 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                     const SizedBox(height: 6),
                     Row(children: [
                       Container(
-                        padding:
-                          const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.white
                             .withValues(alpha: 0.2),
                           borderRadius:
                             BorderRadius.circular(20)),
-                        child: Text(
-                          _statusLabel(statut),
+                        child: Text(_statusLabel(statut),
                           style: const TextStyle(
                             fontSize: 11,
                             color: Colors.white,
@@ -332,8 +321,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                             fontFamily: 'Poppins',
                           ))),
                       const SizedBox(width: 8),
-                      Text(
-                        '${_prioEmoji(prio)} $prio',
+                      Text('${_prioEmoji(prio)} $prio',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white
@@ -346,7 +334,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
               ),
             ]),
           ),
-
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -354,44 +341,33 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                 crossAxisAlignment:
                   CrossAxisAlignment.start,
                 children: [
-
-                  // Info card
                   Container(
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius:
-                        BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: TColors.borderLight,
                         width: 0.5)),
                     padding: const EdgeInsets.all(14),
                     child: Column(children: [
-                      _infoRow(
-                        Icons.category_outlined,
+                      _infoRow(Icons.category_outlined,
                         'Catégorie', cat),
                       _divLine(),
-                      _infoRow(
-                        Icons.place_outlined,
+                      _infoRow(Icons.place_outlined,
                         'Localisation', loc),
                       _divLine(),
-                      _infoRow(
-                        Icons.access_time_outlined,
+                      _infoRow(Icons.access_time_outlined,
                         'Soumis', time),
                       _divLine(),
-                      _infoRow(
-                        Icons.engineering_outlined,
+                      _infoRow(Icons.engineering_outlined,
                         'Agent assigné', agentNom),
                     ]),
                   ),
-
                   const SizedBox(height: 14),
-
-                  // Status timeline
                   Container(
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius:
-                        BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: TColors.borderLight,
                         width: 0.5)),
@@ -421,8 +397,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                             : 'En attente d\'assignation',
                           statut != 'EN_ATTENTE'),
                         _timelineStep(
-                          statut == 'RESOLU'
-                            ? '🏆' : '⏳',
+                          statut == 'RESOLU' ? '🏆' : '⏳',
                           'Résolu',
                           statut == 'RESOLU'
                             ? 'Problème résolu ✓'
@@ -432,10 +407,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 14),
-
-                  // Description
                   const Text('Description',
                     style: TextStyle(
                       fontSize: 14,
@@ -449,8 +421,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF8F9FA),
-                      borderRadius:
-                        BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: TColors.borderLight,
                         width: 0.5)),
@@ -461,8 +432,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                         fontFamily: 'Poppins',
                         height: 1.5,
                       ))),
-
-                  // AI card
                   if (aiScore > 0) ...[
                     const SizedBox(height: 14),
                     Container(
@@ -506,10 +475,10 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                 color: Colors.white
                                   .withValues(alpha: 0.2),
                                 borderRadius:
-                                  BorderRadius.circular(
-                                    20)),
+                                  BorderRadius.circular(20)),
                               child: Text(
-                                '${(aiScore * 100).toStringAsFixed(0)}%',
+                                '${(aiScore * 100)
+                                  .toStringAsFixed(0)}%',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white,
@@ -556,7 +525,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                       ]),
                     ),
                   ],
-
                   const SizedBox(height: 20),
                 ],
               ),
@@ -577,13 +545,11 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
             width: 32, height: 32,
             decoration: BoxDecoration(
               color: done
-                ? TColors.primaryLight
-                : TColors.light,
+                ? TColors.primaryLight : TColors.light,
               shape: BoxShape.circle,
               border: Border.all(
                 color: done
-                  ? TColors.primary
-                  : TColors.borderLight,
+                  ? TColors.primary : TColors.borderLight,
                 width: 1.5)),
             child: Center(
               child: Text(emoji,
@@ -675,8 +641,9 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
           _homeTab(isDark),
           _historyTab(isDark),
           const SizedBox(),
-          const NotificationsScreen(),
-          const ProfileScreen(),
+          // ✅ Use GlobalKey
+          NotificationsScreen(key: _notifKey),
+          ProfileScreen(onRefresh: _fetchSignalements),
         ],
       ),
       floatingActionButton: _currentIndex == 0 ||
@@ -725,7 +692,14 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     final active = _currentIndex == index;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _currentIndex = index),
+        onTap: () {
+          setState(() => _currentIndex = index);
+          if (index == 4) _fetchSignalements();
+          // ✅ Refresh notifs when tab 3 is tapped
+          if (index == 3) {
+            _notifKey.currentState?.refresh();
+          }
+        },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -752,7 +726,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
     );
   }
 
-  // ── HOME TAB ───────────────────────────────────────────────
   Widget _homeTab(bool isDark) {
     final recent = _signalements.take(3).toList();
     return SafeArea(
@@ -765,8 +738,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
             crossAxisAlignment:
               CrossAxisAlignment.stretch,
             children: [
-
-              // ── Hero Banner ────────────────────────────
               FadeTransition(
                 opacity: _bannerAnim,
                 child: Container(
@@ -785,8 +756,6 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                     ),
                   ),
                   child: Stack(children: [
-
-                    // Background decoration circles
                     Positioned(
                       top: -30, right: -20,
                       child: Container(
@@ -794,8 +763,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white
-                            .withValues(alpha: 0.05)),
-                      )),
+                            .withValues(alpha: 0.05)))),
                     Positioned(
                       bottom: -20, left: -10,
                       child: Container(
@@ -803,15 +771,11 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white
-                            .withValues(alpha: 0.05)),
-                      )),
-
+                            .withValues(alpha: 0.05)))),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(
                         16, 16, 16, 20),
                       child: Column(children: [
-
-                        // Top row
                         Row(
                           mainAxisAlignment:
                             MainAxisAlignment.spaceBetween,
@@ -829,8 +793,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                     style: TextStyle(
                                       fontSize: 13,
                                       color: Colors.white
-                                        .withValues(
-                                          alpha: 0.85),
+                                        .withValues(alpha: 0.85),
                                       fontFamily: 'Poppins',
                                       fontWeight:
                                         FontWeight.w500,
@@ -848,10 +811,13 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                               ],
                             ),
                             Row(children: [
-                              // Notif bell
                               GestureDetector(
-                                onTap: () => setState(
-                                  () => _currentIndex = 3),
+                                onTap: () {
+                                  setState(
+                                    () => _currentIndex = 3);
+                                  _notifKey.currentState
+                                    ?.refresh();
+                                },
                                 child: Container(
                                   width: 42, height: 42,
                                   decoration: BoxDecoration(
@@ -865,25 +831,28 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                   child: Stack(children: [
                                     const Center(
                                       child: Icon(
-                                        Icons.notifications_outlined,
+                                        Icons
+                                          .notifications_outlined,
                                         color: Colors.white,
                                         size: 20)),
                                     Positioned(
                                       top: 8, right: 8,
                                       child: Container(
                                         width: 8, height: 8,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                        ))),
-                                  ]),
-                                ),
+                                        decoration:
+                                          const BoxDecoration(
+                                            color: Colors.white,
+                                            shape:
+                                              BoxShape.circle))),
+                                  ])),
                               ),
                               const SizedBox(width: 10),
-                              // Avatar
                               GestureDetector(
-                                onTap: () => setState(
-                                  () => _currentIndex = 4),
+                                onTap: () {
+                                  setState(
+                                    () => _currentIndex = 4);
+                                  _fetchSignalements();
+                                },
                                 child: Container(
                                   width: 42, height: 42,
                                   decoration: BoxDecoration(
@@ -892,8 +861,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: Colors.white
-                                        .withValues(
-                                          alpha: 0.5),
+                                        .withValues(alpha: 0.5),
                                       width: 2)),
                                   child: Center(
                                     child: Text(
@@ -912,10 +880,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                             ]),
                           ],
                         ),
-
                         const SizedBox(height: 16),
-
-                        // Stats row
                         Container(
                           padding: const EdgeInsets.symmetric(
                             vertical: 14, horizontal: 8),
@@ -941,10 +906,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                               Icons.check_circle_outline),
                           ]),
                         ),
-
                         const SizedBox(height: 14),
-
-                        // CTA button
                         GestureDetector(
                           onTap: () async {
                             await Navigator.push(context,
@@ -967,8 +929,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                   blurRadius: 8,
                                   offset:
                                     const Offset(0, 3)),
-                              ],
-                            ),
+                              ]),
                             child: const Row(
                               mainAxisAlignment:
                                 MainAxisAlignment.center,
@@ -985,8 +946,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                                     color: TColors.primary,
                                     fontFamily: 'Poppins',
                                   )),
-                              ],
-                            ),
+                              ]),
                           ),
                         ),
                       ]),
@@ -994,10 +954,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                   ]),
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // ── Quick category pills ───────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16),
@@ -1020,25 +977,18 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(children: [
-                        _catPill('🛣️', 'Voirie',
-                          isDark),
-                        _catPill('💡', 'Eclairage',
-                          isDark),
-                        _catPill('🗑️', 'Propreté',
-                          isDark),
+                        _catPill('🛣️', 'Voirie', isDark),
+                        _catPill('💡', 'Eclairage', isDark),
+                        _catPill('🗑️', 'Propreté', isDark),
                         _catPill('🌿', 'Espaces Verts',
                           isDark),
-                        _catPill('❓', 'Autre',
-                          isDark),
+                        _catPill('❓', 'Autre', isDark),
                       ]),
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
-              // ── Recent section ─────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16),
@@ -1061,15 +1011,13 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                       onTap: () => setState(
                         () => _currentIndex = 1),
                       child: Container(
-                        padding:
-                          const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
                         decoration: BoxDecoration(
                           color: TColors.primaryLight,
                           borderRadius:
                             BorderRadius.circular(20)),
-                        child: const Text(
-                          'Voir tout →',
+                        child: const Text('Voir tout →',
                           style: TextStyle(
                             fontSize: 12,
                             color: TColors.primary,
@@ -1081,10 +1029,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                   ],
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // ── Cards ──────────────────────────────────
               _loadingData
                 ? const Padding(
                     padding: EdgeInsets.all(32),
@@ -1098,10 +1043,8 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                         horizontal: 16),
                       child: Column(
                         children: recent.map((s) =>
-                          _card(s, isDark)).toList(),
-                      ),
+                          _card(s, isDark)).toList()),
                     ),
-
               const SizedBox(height: 80),
             ],
           ),
@@ -1125,18 +1068,17 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
         padding: const EdgeInsets.symmetric(
           horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark ? TColors.cardDark : Colors.white,
+          color: isDark
+            ? TColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: TColors.borderLight, width: 0.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                .withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 6,
               offset: const Offset(0, 2)),
-          ],
-        ),
+          ]),
         child: Row(children: [
           Text(emoji,
             style: const TextStyle(fontSize: 16)),
@@ -1158,89 +1100,83 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
   Widget _emptyHome() {
     return Padding(
       padding: const EdgeInsets.all(32),
-      child: Column(
-        children: [
-          Container(
-            width: 80, height: 80,
+      child: Column(children: [
+        Container(
+          width: 80, height: 80,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                TColors.primaryLight,
+                TColors.primary.withValues(alpha: 0.1)]),
+            shape: BoxShape.circle),
+          child: const Center(
+            child: Text('📍',
+              style: TextStyle(fontSize: 36)))),
+        const SizedBox(height: 16),
+        const Text('Aucun signalement',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: TColors.textPrimary,
+            fontFamily: 'Poppins',
+          )),
+        const SizedBox(height: 6),
+        const Text(
+          'Signalez un problème dans votre ville\net contribuez à l\'améliorer 🇹🇳',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            color: TColors.textHint,
+            fontFamily: 'Poppins',
+            height: 1.5,
+          )),
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: () async {
+            await Navigator.push(context,
+              MaterialPageRoute(
+                builder: (_) =>
+                  const NewSignalementScreen()));
+            _fetchSignalements();
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 colors: [
-                  TColors.primaryLight,
-                  TColors.primary
-                    .withValues(alpha: 0.1)]),
-              shape: BoxShape.circle),
-            child: const Center(
-              child: Text('📍',
-                style: TextStyle(fontSize: 36)))),
-          const SizedBox(height: 16),
-          const Text('Aucun signalement',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: TColors.textPrimary,
-              fontFamily: 'Poppins',
-            )),
-          const SizedBox(height: 6),
-          const Text(
-            'Signalez un problème dans votre ville\net contribuez à la améliorer 🇹🇳',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: TColors.textHint,
-              fontFamily: 'Poppins',
-              height: 1.5,
-            )),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: () async {
-              await Navigator.push(context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                    const NewSignalementScreen()));
-              _fetchSignalements();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    TColors.primary,
-                    Color(0xFFE53935)]),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.add,
-                    color: Colors.white, size: 18),
-                  SizedBox(width: 8),
-                  Text('Créer un signalement',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      fontFamily: 'Poppins',
-                    )),
-                ],
-              ),
-            ),
+                  TColors.primary,
+                  Color(0xFFE53935)]),
+              borderRadius: BorderRadius.circular(14)),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add,
+                  color: Colors.white, size: 18),
+                SizedBox(width: 8),
+                Text('Créer un signalement',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                  )),
+              ]),
           ),
-        ],
-      ),
+        ),
+      ]),
     );
   }
 
-  // ── HISTORY TAB ────────────────────────────────────────────
   Widget _historyTab(bool isDark) {
     return SafeArea(
       child: Column(children: [
-
-        // Gradient header
         Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [TColors.primary, Color(0xFFE53935)],
+              colors: [
+                TColors.primary,
+                Color(0xFFE53935)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1299,10 +1235,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
             ),
           ]),
         ),
-
         const SizedBox(height: 8),
-
-        // Filter tabs
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: 16, vertical: 4),
@@ -1335,11 +1268,9 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                           : Colors.transparent,
                         borderRadius:
                           BorderRadius.circular(10),
-                        border: sel
-                          ? Border.all(
-                              color: TColors.borderLight,
-                              width: 0.5)
-                          : null),
+                        border: sel ? Border.all(
+                          color: TColors.borderLight,
+                          width: 0.5) : null),
                       child: Text(labels[i],
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -1359,9 +1290,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
             ),
           ),
         ),
-
         const SizedBox(height: 4),
-
         Expanded(
           child: _loadingData
             ? const Center(
@@ -1374,8 +1303,7 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
                       MainAxisAlignment.center,
                     children: [
                       const Text('📋',
-                        style: TextStyle(
-                          fontSize: 48)),
+                        style: TextStyle(fontSize: 48)),
                       const SizedBox(height: 12),
                       const Text('Aucun signalement',
                         style: TextStyle(
@@ -1422,18 +1350,17 @@ class _CitoyenHomeScreenState extends State<CitoyenHomeScreen>
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: isDark ? TColors.cardDark : Colors.white,
+          color: isDark
+            ? TColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: TColors.borderLight, width: 0.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black
-                .withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2)),
-          ],
-        ),
+          ]),
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

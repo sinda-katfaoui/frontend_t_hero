@@ -8,7 +8,8 @@ import 'package:frontend_t_hero/utils/constants/colors.dart';
 import 'package:frontend_t_hero/utils/constants/api_constant.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback? onRefresh;
+  const ProfileScreen({super.key, this.onRefresh});
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -27,14 +28,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfile();
   }
 
-  // ── Extract ID from JWT token ──────────────────────────────
+  // ✅ Called every time this widget is updated
+  // (i.e. when tab is switched to profile)
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadStats();
+  }
+
   String _extractIdFromToken(String token) {
     try {
       final parts = token.split('.');
       if (parts.length != 3) return '';
       final payload = parts[1];
       final normalized = base64Url.normalize(payload);
-      final decoded = utf8.decode(base64Url.decode(normalized));
+      final decoded =
+        utf8.decode(base64Url.decode(normalized));
       final map = jsonDecode(decoded);
       return map['id'] ?? '';
     } catch (_) { return ''; }
@@ -46,7 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final token   = prefs.getString('token') ?? '';
     final user    = jsonDecode(userRaw);
 
-    // Try all possible keys + token fallback
     String userId = user['_id'] ?? user['id'] ?? '';
     if (userId.isEmpty && token.isNotEmpty) {
       userId = _extractIdFromToken(token);
@@ -59,7 +67,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _email = user['email'] ?? '';
     });
 
-    // Also fix SharedPreferences if _id was missing
     if (user['_id'] == null && userId.isNotEmpty) {
       user['_id'] = userId;
       await prefs.setString('user', jsonEncode(user));
@@ -120,8 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28)),
-        ),
+            top: Radius.circular(28))),
         padding: EdgeInsets.fromLTRB(
           20, 12, 20,
           MediaQuery.of(context).viewInsets.bottom + 24),
@@ -171,7 +177,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       await SharedPreferences.getInstance();
                     final token =
                       prefs.getString('token') ?? '';
-
                     final response = await http.put(
                       Uri.parse(
                         '${ApiConstants.baseUrl}'
@@ -182,7 +187,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       },
                       body: jsonEncode({'nom': newName}),
                     ).timeout(const Duration(seconds: 10));
-
                     if (response.statusCode == 200) {
                       final userRaw =
                         prefs.getString('user') ?? '{}';
@@ -212,8 +216,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
+                  elevation: 0),
                 child: const Text('Enregistrer',
                   style: TextStyle(
                     fontSize: 15,
@@ -240,8 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(
-            top: Radius.circular(28)),
-        ),
+            top: Radius.circular(28))),
         padding: EdgeInsets.fromLTRB(
           20, 12, 20,
           MediaQuery.of(context).viewInsets.bottom + 24),
@@ -316,7 +318,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     return;
                   }
                   try {
-                    // Verify old password
                     final loginResp = await http.post(
                       Uri.parse(ApiConstants.login),
                       headers: {
@@ -326,19 +327,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'password': oldCtrl.text,
                       }),
                     ).timeout(const Duration(seconds: 10));
-
                     if (loginResp.statusCode != 200) {
                       _showSnack(
                         '❌ Mot de passe actuel incorrect',
                         TColors.error);
                       return;
                     }
-
                     final prefs =
                       await SharedPreferences.getInstance();
                     final token =
                       prefs.getString('token') ?? '';
-
                     final response = await http.put(
                       Uri.parse(
                         '${ApiConstants.baseUrl}'
@@ -350,7 +348,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       body: jsonEncode(
                         {'motDePasse': newCtrl.text}),
                     ).timeout(const Duration(seconds: 10));
-
                     if (mounted) Navigator.pop(context);
                     if (response.statusCode == 200) {
                       _showSnack(
@@ -371,8 +368,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
+                  elevation: 0),
                 child: const Text('Mettre à jour',
                   style: TextStyle(
                     fontSize: 15,
@@ -405,300 +401,307 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      child: RefreshIndicator(
+        onRefresh: _loadStats,
+        color: TColors.primary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
 
-            // ── Gradient Header ──────────────────────────────
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    TColors.primary,
-                    Color(0xFFE53935)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft:  Radius.circular(32),
-                  bottomRight: Radius.circular(32),
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(
-                16, 20, 16, 24),
-              child: Column(children: [
-
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      width: 84, height: 84,
-                      decoration: BoxDecoration(
-                        color: Colors.white
-                          .withValues(alpha: 0.2),
-                        borderRadius:
-                          BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white
-                            .withValues(alpha: 0.5),
-                          width: 2.5),
-                      ),
-                      child: Center(
-                        child: Text(_initials,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'Poppins',
-                          ))),
-                    ),
-                    GestureDetector(
-                      onTap: _showEditProfile,
-                      child: Container(
-                        width: 28, height: 28,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle),
-                        child: const Icon(Icons.edit,
-                          size: 14,
-                          color: TColors.primary)),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-
-                Text('🌟 Héros $_nom',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'Poppins',
-                  )),
-
-                const SizedBox(height: 4),
-
-                Text(_email,
-                  style: TextStyle(
-                    color: Colors.white
-                      .withValues(alpha: 0.75),
-                    fontSize: 12,
-                    fontFamily: 'Poppins',
-                  )),
-
-                const SizedBox(height: 8),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white
-                      .withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white
-                        .withValues(alpha: 0.3))),
-                  child: const Text('⚡ Citoyen T HERO',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                    )),
-                ),
-
-                const SizedBox(height: 16),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 14, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white
-                      .withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20)),
-                  child: Row(children: [
-                    _statItem('$_total', 'Signalements',
-                      Icons.flag_outlined),
-                    _vDiv(),
-                    _statItem('$_enCours', 'En cours',
-                      Icons.pending_outlined),
-                    _vDiv(),
-                    _statItem('$_resolus', 'Résolus',
-                      Icons.check_circle_outline),
-                  ]),
-                ),
-              ]),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Encouragement ────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+              // ── Gradient Header ────────────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
                     colors: [
-                      Color(0xFF1565C0),
-                      Color(0xFF1976D2)],
+                      TColors.primary,
+                      Color(0xFFE53935)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft:  Radius.circular(32),
+                    bottomRight: Radius.circular(32),
+                  ),
                 ),
-                child: Row(children: [
-                  const Text('🌟',
-                    style: TextStyle(fontSize: 28)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Merci pour votre engagement !',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            fontFamily: 'Poppins',
-                          )),
-                        Text(
-                          'Chaque signalement améliore votre ville 🇹🇳',
-                          style: TextStyle(
-                            fontSize: 11,
+                padding: const EdgeInsets.fromLTRB(
+                  16, 20, 16, 24),
+                child: Column(children: [
+
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 84, height: 84,
+                        decoration: BoxDecoration(
+                          color: Colors.white
+                            .withValues(alpha: 0.2),
+                          borderRadius:
+                            BorderRadius.circular(24),
+                          border: Border.all(
                             color: Colors.white
-                              .withValues(alpha: 0.9),
-                            fontFamily: 'Poppins',
-                          )),
-                      ],
-                    ),
+                              .withValues(alpha: 0.5),
+                            width: 2.5)),
+                        child: Center(
+                          child: Text(_initials,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'Poppins',
+                            ))),
+                      ),
+                      GestureDetector(
+                        onTap: _showEditProfile,
+                        child: Container(
+                          width: 28, height: 28,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle),
+                          child: const Icon(Icons.edit,
+                            size: 14,
+                            color: TColors.primary)),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text('🌟 Héros $_nom',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Poppins',
+                    )),
+
+                  const SizedBox(height: 4),
+
+                  Text(_email,
+                    style: TextStyle(
+                      color: Colors.white
+                        .withValues(alpha: 0.75),
+                      fontSize: 12,
+                      fontFamily: 'Poppins',
+                    )),
+
+                  const SizedBox(height: 8),
+
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white
+                        .withValues(alpha: 0.2),
+                      borderRadius:
+                        BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white
+                          .withValues(alpha: 0.3))),
+                    child: const Text('⚡ Citoyen T HERO',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w600,
+                      )),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ✅ Stats update automatically
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white
+                        .withValues(alpha: 0.15),
+                      borderRadius:
+                        BorderRadius.circular(20)),
+                    child: Row(children: [
+                      _statItem('$_total', 'Signalements',
+                        Icons.flag_outlined),
+                      _vDiv(),
+                      _statItem('$_enCours', 'En cours',
+                        Icons.pending_outlined),
+                      _vDiv(),
+                      _statItem('$_resolus', 'Résolus',
+                        Icons.check_circle_outline),
+                    ]),
                   ),
                 ]),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // ── Menu ─────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16),
-              child: Column(children: [
-
-                _menuItem(
-                  emoji: '✏️',
-                  label: 'Modifier mon nom',
-                  subtitle: 'Votre identité de citoyen',
-                  isDark: isDark,
-                  onTap: _showEditProfile),
-
-                const SizedBox(height: 10),
-
-                _menuItem(
-                  emoji: '🔐',
-                  label: 'Changer le mot de passe',
-                  subtitle: 'Sécurisez votre compte',
-                  isDark: isDark,
-                  onTap: _showChangePassword),
-
-                const SizedBox(height: 10),
-
-                _menuItem(
-                  emoji: '⚙️',
-                  label: 'Paramètres',
-                  subtitle: 'Préférences de l\'application',
-                  isDark: isDark,
-                  onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                        const ParametresScreen()))),
-
-                const SizedBox(height: 16),
-
-                Divider(
-                  color: TColors.borderLight,
-                  thickness: 0.5),
-
-                const SizedBox(height: 10),
-
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () async {
-                      final prefs =
-                        await SharedPreferences.getInstance();
-                      await prefs.remove('token');
-                      await prefs.remove('user');
-                      if (!mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                            const LoginScreen()),
-                        (r) => false);
-                    },
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF1565C0),
+                        Color(0xFF1976D2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(16),
-                    child: Ink(
-                      decoration: BoxDecoration(
-                        color: TColors.primaryLight,
-                        borderRadius:
-                          BorderRadius.circular(16),
-                        border: Border.all(
-                          color: TColors.primary
-                            .withValues(alpha: 0.3),
-                          width: 1)),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                      child: Row(children: [
-                        Container(
-                          width: 42, height: 42,
-                          decoration: BoxDecoration(
+                  ),
+                  child: Row(children: [
+                    const Text('🌟',
+                      style: TextStyle(fontSize: 28)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Merci pour votre engagement !',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontFamily: 'Poppins',
+                            )),
+                          Text(
+                            'Chaque signalement améliore votre ville 🇹🇳',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.white
+                                .withValues(alpha: 0.9),
+                              fontFamily: 'Poppins',
+                            )),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16),
+                child: Column(children: [
+
+                  _menuItem(
+                    emoji: '✏️',
+                    label: 'Modifier mon nom',
+                    subtitle: 'Votre identité de citoyen',
+                    isDark: isDark,
+                    onTap: _showEditProfile),
+
+                  const SizedBox(height: 10),
+
+                  _menuItem(
+                    emoji: '🔐',
+                    label: 'Changer le mot de passe',
+                    subtitle: 'Sécurisez votre compte',
+                    isDark: isDark,
+                    onTap: _showChangePassword),
+
+                  const SizedBox(height: 10),
+
+                  _menuItem(
+                    emoji: '⚙️',
+                    label: 'Paramètres',
+                    subtitle: 'Préférences de l\'application',
+                    isDark: isDark,
+                    onTap: () => Navigator.push(context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                          const ParametresScreen()))),
+
+                  const SizedBox(height: 16),
+
+                  Divider(
+                    color: TColors.borderLight,
+                    thickness: 0.5),
+
+                  const SizedBox(height: 10),
+
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        final prefs =
+                          await SharedPreferences
+                            .getInstance();
+                        await prefs.remove('token');
+                        await prefs.remove('user');
+                        if (!mounted) return;
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                              const LoginScreen()),
+                          (r) => false);
+                      },
+                      borderRadius:
+                        BorderRadius.circular(16),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: TColors.primaryLight,
+                          borderRadius:
+                            BorderRadius.circular(16),
+                          border: Border.all(
                             color: TColors.primary
-                              .withValues(alpha: 0.1),
-                            borderRadius:
-                              BorderRadius.circular(12)),
-                          child: const Icon(
-                            Icons.logout_rounded,
-                            size: 20,
-                            color: TColors.primary)),
-                        const SizedBox(width: 14),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                            children: [
-                              Text('Déconnexion',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'Poppins',
-                                  color: TColors.primary,
-                                )),
-                              Text('À bientôt ! 👋',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: TColors.textHint,
-                                  fontFamily: 'Poppins',
-                                )),
-                            ],
+                              .withValues(alpha: 0.3),
+                            width: 1)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                        child: Row(children: [
+                          Container(
+                            width: 42, height: 42,
+                            decoration: BoxDecoration(
+                              color: TColors.primary
+                                .withValues(alpha: 0.1),
+                              borderRadius:
+                                BorderRadius.circular(12)),
+                            child: const Icon(
+                              Icons.logout_rounded,
+                              size: 20,
+                              color: TColors.primary)),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                              children: [
+                                Text('Déconnexion',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Poppins',
+                                    color: TColors.primary,
+                                  )),
+                                Text('À bientôt ! 👋',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: TColors.textHint,
+                                    fontFamily: 'Poppins',
+                                  )),
+                              ],
+                            ),
                           ),
-                        ),
-                        const Icon(Icons.arrow_forward_ios,
-                          size: 15,
-                          color: TColors.primary),
-                      ]),
+                          const Icon(Icons.arrow_forward_ios,
+                            size: 15,
+                            color: TColors.primary),
+                        ]),
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
-              ]),
-            ),
-          ],
+                  const SizedBox(height: 24),
+                ]),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -756,8 +759,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2)),
-            ],
-          ),
+            ]),
           padding: const EdgeInsets.symmetric(
             horizontal: 16, vertical: 14),
           child: Row(children: [
@@ -772,7 +774,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: 14),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                  CrossAxisAlignment.start,
                 children: [
                   Text(label,
                     style: TextStyle(
@@ -827,22 +830,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(
               fontSize: 14,
               color: TColors.textPrimary,
-              fontFamily: 'Poppins',
-            ),
+              fontFamily: 'Poppins'),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(
                 fontSize: 14,
                 color: TColors.textHint,
-                fontFamily: 'Poppins',
-              ),
+                fontFamily: 'Poppins'),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(
-                vertical: 12),
-            ),
+                vertical: 12)),
           ),
         ),
       ]),

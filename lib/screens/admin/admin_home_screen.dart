@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/screens/admin/admin_users_screen.dart';
 import 'package:frontend_t_hero/screens/admin/admin_signalements_screen.dart';
 import 'package:frontend_t_hero/screens/admin/admin_categories_screen.dart';
+import 'package:frontend_t_hero/screens/admin/admin_profile_screen.dart';
 import 'package:frontend_t_hero/screens/auth/login_screen.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 import 'package:frontend_t_hero/utils/constants/api_constant.dart';
@@ -27,7 +28,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   int _totalEnAttente    = 0;
   List<Map<String, dynamic>> _recentSignalements = [];
   List<Map<String, dynamic>> _categories         = [];
-  // catId -> count
   Map<String, int> _catCounts = {};
   bool   _loadingStats = true;
   String _adminName    = 'Admin';
@@ -91,7 +91,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           .map((e) => e as Map<String, dynamic>)
           .toList();
 
-        // Count per category
         final Map<String, int> counts = {};
         for (final s in list) {
           final cat = s['categorie'];
@@ -178,7 +177,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark =
+      Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? TColors.dark : TColors.light,
       body: IndexedStack(
@@ -277,9 +277,13 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         ],
                       ),
                       Row(children: [
+
+                        // Admin badge
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
+                          padding:
+                            const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white
                               .withValues(alpha: 0.2),
@@ -302,7 +306,38 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                               )),
                           ]),
                         ),
+
                         const SizedBox(width: 8),
+
+                        // Profile button
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                const AdminProfileScreen())),
+                          child: Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                    .withValues(alpha: 0.15),
+                                  blurRadius: 6,
+                                  offset:
+                                    const Offset(0, 2)),
+                              ]),
+                            child: const Icon(
+                              Icons.person_outline,
+                              color: TColors.primary,
+                              size: 18)),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        // Logout button
                         GestureDetector(
                           onTap: _logout,
                           child: Container(
@@ -325,7 +360,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Stats row
+                  // Stats strip
                   Container(
                     padding: const EdgeInsets.symmetric(
                       vertical: 14, horizontal: 8),
@@ -408,10 +443,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16),
-                child: Row(children: [
-                  const Text('📊 ',
+                child: const Row(children: [
+                  Text('📊 ',
                     style: TextStyle(fontSize: 14)),
-                  const Text('Aperçu des statuts',
+                  Text('Aperçu des statuts',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
@@ -423,7 +458,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
               const SizedBox(height: 10),
 
-              // Status cards row
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16),
@@ -460,7 +494,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
               const SizedBox(height: 14),
 
-              // ── Real bar chart ───────────────────────────
+              // ── Bar chart ────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16),
@@ -485,10 +519,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     crossAxisAlignment:
                       CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        const Text('📈 ',
+                      const Row(children: [
+                        Text('📈 ',
                           style: TextStyle(fontSize: 14)),
-                        const Text(
+                        Text(
                           'Signalements par catégorie',
                           style: TextStyle(
                             fontSize: 15,
@@ -579,15 +613,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         child: CircularProgressIndicator(
                           color: TColors.primary))
                     else if (_recentSignalements.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(20),
+                      const Padding(
+                        padding: EdgeInsets.all(20),
                         child: Column(children: [
-                          const Text('📋',
+                          Text('📋',
                             style: TextStyle(
                               fontSize: 36)),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Aucun signalement',
+                          SizedBox(height: 8),
+                          Text('Aucun signalement',
                             style: TextStyle(
                               fontSize: 14,
                               color: TColors.textHint,
@@ -622,7 +655,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             border: Border.all(
                               color: TColors.borderLight,
                               width: 0.5)),
-                          padding: const EdgeInsets.all(12),
+                          padding:
+                            const EdgeInsets.all(12),
                           child: Row(children: [
                             Container(
                               width: 42, height: 42,
@@ -640,7 +674,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                             Expanded(
                               child: Column(
                                 crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  CrossAxisAlignment
+                                    .start,
                                 children: [
                                   Text(desc,
                                     overflow:
@@ -707,7 +742,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     );
   }
 
-  // ── Real bar chart ─────────────────────────────────────
   Widget _buildRealBarChart(bool isDark) {
     if (_categories.isEmpty || _catCounts.isEmpty) {
       return const Padding(
@@ -725,7 +759,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       );
     }
 
-    // Build list of (catName, count) sorted by count desc
     final List<MapEntry<String, int>> entries = [];
     for (final cat in _categories) {
       final id    = cat['_id'] ?? '';
@@ -735,14 +768,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
     entries.sort((a, b) => b.value.compareTo(a.value));
 
-    final maxCount = entries.isEmpty
-      ? 1
-      : entries.first.value == 0
-        ? 1
-        : entries.first.value;
+    final maxCount = entries.isEmpty ? 1
+      : entries.first.value == 0 ? 1
+      : entries.first.value;
     const maxBarHeight = 80.0;
 
-    // Color palette for bars
     final barColors = [
       TColors.primary,
       TColors.info,
@@ -754,7 +784,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Chart
         SizedBox(
           height: maxBarHeight + 50,
           child: Row(
@@ -765,10 +794,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
               final count = e.value.value;
               final ratio = count / maxCount;
               final barH  = ratio * maxBarHeight;
-              final color = barColors[i % barColors.length];
+              final color =
+                barColors[i % barColors.length];
               final shortNom = nom.length > 7
                 ? nom.substring(0, 6) : nom;
-
               return Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -777,7 +806,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                     mainAxisAlignment:
                       MainAxisAlignment.end,
                     children: [
-                      // Count label
                       Text('$count',
                         style: TextStyle(
                           fontSize: 11,
@@ -786,7 +814,6 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                           fontFamily: 'Poppins',
                         )),
                       const SizedBox(height: 3),
-                      // Bar
                       AnimatedContainer(
                         duration: const Duration(
                           milliseconds: 600),
@@ -804,11 +831,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                               blurRadius: 6,
                               offset:
                                 const Offset(0, 2)),
-                          ],
-                        ),
+                          ]),
                       ),
                       const SizedBox(height: 8),
-                      // Name
                       Text(shortNom,
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -826,13 +851,10 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             }).toList(),
           ),
         ),
-
         const SizedBox(height: 12),
         const Divider(height: 1, thickness: 0.5,
           color: TColors.borderLight),
         const SizedBox(height: 12),
-
-        // Legend
         Wrap(
           spacing: 12,
           runSpacing: 6,
@@ -840,7 +862,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
             final i     = e.key;
             final nom   = e.value.key;
             final count = e.value.value;
-            final color = barColors[i % barColors.length];
+            final color =
+              barColors[i % barColors.length];
             return Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -848,8 +871,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   width: 10, height: 10,
                   decoration: BoxDecoration(
                     color: color,
-                    borderRadius: BorderRadius.circular(3)),
-                ),
+                    borderRadius:
+                      BorderRadius.circular(3))),
                 const SizedBox(width: 5),
                 Text('$nom ($count)',
                   style: const TextStyle(

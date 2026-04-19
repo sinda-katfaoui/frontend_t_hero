@@ -25,7 +25,6 @@ class _Prio {
 }
 
 const _primary   = Color(0xFFC1272D);
-const _bgPage    = Color(0xFFF8F6F3);
 const _white     = Color(0xFFFFFFFF);
 const _textMain  = Color(0xFF1E1E1E);
 const _textSub   = Color(0xFF6B6B6B);
@@ -174,12 +173,9 @@ class _NewSignalementScreenState
         try {
           final parts = token.split('.');
           if (parts.length == 3) {
-            final payload = parts[1];
-            final norm    = base64Url.normalize(payload);
-            final decoded =
-              utf8.decode(base64Url.decode(norm));
-            final map = jsonDecode(decoded);
-            citoyenId = map['id'] ?? '';
+            final norm    = base64Url.normalize(parts[1]);
+            final decoded = utf8.decode(base64Url.decode(norm));
+            citoyenId = jsonDecode(decoded)['id'] ?? '';
           }
         } catch (_) {}
       }
@@ -195,17 +191,15 @@ class _NewSignalementScreenState
         'photo', _photo!.path));
       final streamed = await request.send()
         .timeout(const Duration(seconds: 15));
-      final response =
-        await http.Response.fromStream(streamed);
+      final response = await http.Response.fromStream(streamed);
       if (!mounted) return;
       setState(() => _loading = false);
       if (response.statusCode == 201) {
         Navigator.pop(context);
-        _snack('Signalement envoyé avec succès', _success);
+        _snack('Signalement envoyé ✓', _success);
       } else {
         final data = jsonDecode(response.body);
-        _snack(data['message'] ?? 'Erreur lors de l\'envoi',
-          _primary);
+        _snack(data['message'] ?? 'Erreur', _primary);
       }
     } catch (e) {
       if (!mounted) return;
@@ -233,12 +227,12 @@ class _NewSignalementScreenState
     color: _white,
     borderRadius: BorderRadius.circular(12),
     border: Border.all(
-      color: _redBorder.withValues(alpha: 0.45),
-      width: 1.5),
+      color: _redBorder.withValues(alpha: 0.35),
+      width: 1.2),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withValues(alpha: 0.03),
-        blurRadius: 4,
+        color: Colors.black.withValues(alpha: 0.04),
+        blurRadius: 6,
         offset: const Offset(0, 2)),
     ],
   );
@@ -246,68 +240,68 @@ class _NewSignalementScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgPage,
+      backgroundColor: const Color(0xFFEEEEEE),
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: Column(children: [
-            _appBar(),
+
+            // ── Header ──────────────────────────────────
+            _buildHeader(),
+
+            // ── Body fills remaining space ───────────────
             Expanded(
-              child: LayoutBuilder(
-                builder: (ctx, box) {
-                  final h     = box.maxHeight;
-                  final avail = h - 66;
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      12, 10, 12, 8),
-                    child: Column(
-                      crossAxisAlignment:
-                        CrossAxisAlignment.stretch,
-                      children: [
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  12, 8, 12, 8),
+                child: Column(
+                  crossAxisAlignment:
+                    CrossAxisAlignment.stretch,
+                  children: [
 
-                        // 1. GPS — 8%
-                        SizedBox(
-                          height: avail * 0.08,
-                          child: _gpsBar()),
-                        const SizedBox(height: 8),
+                    // 1. GPS
+                    Expanded(
+                      flex: 9,
+                      child: _gpsBar()),
+                    const SizedBox(height: 6),
 
-                        // 2. Photo — 29%
-                        SizedBox(
-                          height: avail * 0.29,
-                          child: _photoCard()),
-                        const SizedBox(height: 8),
+                    // 2. Photo
+                    Expanded(
+                      flex: 26,
+                      child: _photoCard()),
+                    const SizedBox(height: 6),
 
-                        // 3. Description — 12%
-                        SizedBox(
-                          height: avail * 0.12,
-                          child: _descCard()),
-                        const SizedBox(height: 8),
+                    // 3. Description
+                    Expanded(
+                      flex: 14,
+                      child: _descCard()),
+                    const SizedBox(height: 6),
 
-                        // 4. Categories — 15%
-                        SizedBox(
-                          height: avail * 0.15,
-                          child: _catRow()),
-                        const SizedBox(height: 8),
+                    // 4. Categories
+                    Expanded(
+                      flex: 14,
+                      child: _catRow()),
+                    const SizedBox(height: 6),
 
-                        // 5. Priority — 14%
-                        SizedBox(
-                          height: avail * 0.14,
-                          child: _prioRow()),
-                        const SizedBox(height: 8),
+                    // 5. Priority
+                    Expanded(
+                      flex: 13,
+                      child: _prioRow()),
+                    const SizedBox(height: 6),
 
-                        // 6. Submit — 8%
-                        SizedBox(
-                          height: avail * 0.08,
-                          child: _submitBtn()),
-                        const SizedBox(height: 8),
+                    // 6. Submit
+                    Expanded(
+                      flex: 9,
+                      child: _submitBtn()),
+                    const SizedBox(height: 4),
 
-                        // 7. AI hint — remaining
-                        Expanded(child: _aiHint()),
-                      ],
-                    ),
-                  );
-                },
+                    // 7. AI hint
+                    Expanded(
+                      flex: 4,
+                      child: _aiHint()),
+                  ],
+                ),
               ),
             ),
           ]),
@@ -316,76 +310,125 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── AppBar ─────────────────────────────────────────────
-  Widget _appBar() {
+  Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 11, 16, 11),
       decoration: const BoxDecoration(
-        color: _white,
-        border: Border(
-          bottom: BorderSide(color: _primary, width: 2))),
-      child: Row(children: [
-        GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F3F3),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _border, width: 1)),
-            child: const Icon(Icons.arrow_back_ios_new,
-              size: 13, color: _textMain),
-          ),
+        gradient: LinearGradient(
+          colors: [_primary, Color(0xFFE53935)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Nouveau Signalement',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: _textMain,
-                  fontFamily: 'Poppins',
-                  letterSpacing: -0.3,
-                )),
-              Text('Ville Intelligente — Tunisie',
+        borderRadius: BorderRadius.only(
+          bottomLeft:  Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      child: Column(children: [
+
+        Row(children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 34, height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white
+                    .withValues(alpha: 0.3))),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white, size: 14)),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Nouveau Signalement',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                  )),
+                Text('Ville Intelligente — Tunisie 🇹🇳',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70,
+                    fontFamily: 'Poppins',
+                  )),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3))),
+            child: const Row(children: [
+              Icon(Icons.auto_awesome,
+                size: 11, color: Colors.white),
+              SizedBox(width: 4),
+              Text('IA activée',
                 style: TextStyle(
                   fontSize: 10,
-                  color: _textSub,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
                   fontFamily: 'Poppins',
-                  fontWeight: FontWeight.w500,
                 )),
-            ],
+            ]),
           ),
-        ),
+        ]),
+
+        const SizedBox(height: 10),
+
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 9, vertical: 4),
+            horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFDECEC),
-            borderRadius: BorderRadius.circular(8),
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: _primary.withValues(alpha: 0.4))),
-          child: const Row(children: [
-            Icon(Icons.auto_awesome,
-              size: 11, color: _primary),
-            SizedBox(width: 4),
-            Text('IA activée',
-              style: TextStyle(
-                fontSize: 10,
-                color: _primary,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Poppins',
-              )),
+              color: Colors.white.withValues(alpha: 0.2))),
+          child: Row(children: [
+            const Text('🦸',
+              style: TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                  CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Signalez, protégez votre ville !',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      fontFamily: 'Poppins',
+                    )),
+                  Text(
+                    'Chaque signalement compte 💪',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.white
+                        .withValues(alpha: 0.85),
+                      fontFamily: 'Poppins',
+                    )),
+                ],
+              ),
+            ),
           ]),
         ),
       ]),
     );
   }
 
-  // ── 1. GPS ─────────────────────────────────────────────
   Widget _gpsBar() {
     return Container(
       decoration: _cardBox(),
@@ -394,7 +437,10 @@ class _NewSignalementScreenState
         Container(
           width: 28, height: 28,
           decoration: BoxDecoration(
-            color: _lat != null ? _success : _primary,
+            gradient: LinearGradient(
+              colors: _lat != null
+                ? [_success, const Color(0xFF43A047)]
+                : [_primary, const Color(0xFFE53935)]),
             shape: BoxShape.circle),
           child: _gpsLoading
             ? const Padding(
@@ -467,40 +513,44 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 2. Photo ───────────────────────────────────────────
   Widget _photoCard() {
     return Container(
       decoration: _cardBox(),
       child: Column(children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+              MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Photo du problème',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _textMain,
-                  fontFamily: 'Poppins',
-                )),
+              const Row(children: [
+                Icon(Icons.camera_alt_outlined,
+                  size: 13, color: _primary),
+                SizedBox(width: 5),
+                Text('Photo du problème',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _textMain,
+                    fontFamily: 'Poppins',
+                  )),
+              ]),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 8, vertical: 3),
+                  horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: _photo != null
                     ? _success.withValues(alpha: 0.1)
                     : const Color(0xFFFDECEC),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: _photo != null
                       ? _success.withValues(alpha: 0.5)
                       : _primary.withValues(alpha: 0.4))),
                 child: Text(
-                  _photo != null
-                    ? '✓ Photo ajoutée' : 'Obligatoire',
+                  _photo != null ? '✓ OK' : '* Requis',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: _photo != null
                       ? _success : _primary,
@@ -513,17 +563,18 @@ class _NewSignalementScreenState
           child: GestureDetector(
             onTap: () => _pickImage(ImageSource.camera),
             child: Padding(
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(5),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(9),
                 child: _photo != null
                   ? Stack(fit: StackFit.expand, children: [
                       Image.file(_photo!, fit: BoxFit.cover),
                       Positioned(
-                        bottom: 7, right: 7,
+                        bottom: 6, right: 6,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          padding:
+                            const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
                             color: _success,
                             borderRadius:
@@ -533,11 +584,11 @@ class _NewSignalementScreenState
                             children: [
                               Icon(Icons.check,
                                 color: Colors.white,
-                                size: 11),
-                              SizedBox(width: 4),
+                                size: 10),
+                              SizedBox(width: 3),
                               Text('Photo OK',
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 9,
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'Poppins')),
@@ -546,41 +597,46 @@ class _NewSignalementScreenState
                   : Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFAFAFA),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFFDECEC),
+                            Color(0xFFFFF8F8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight),
                         borderRadius:
-                          BorderRadius.circular(10),
+                          BorderRadius.circular(9),
                         border: Border.all(
                           color: _redBorder
-                            .withValues(alpha: 0.25),
+                            .withValues(alpha: 0.2),
                           width: 1.5)),
                       child: Column(
                         mainAxisAlignment:
                           MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: 46, height: 46,
+                            width: 40, height: 40,
                             decoration: const BoxDecoration(
-                              color: Color(0xFFFDECEC),
+                              color: _white,
                               shape: BoxShape.circle),
                             child: const Icon(
                               Icons.camera_alt_outlined,
-                              color: _primary, size: 22)),
-                          const SizedBox(height: 8),
+                              color: _primary, size: 20)),
+                          const SizedBox(height: 6),
                           const Text(
                             'Photographiez le problème',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: _textMain,
                               fontFamily: 'Poppins',
                             )),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           const Text(
-                            'Appuyez pour ouvrir la caméra',
+                            'Appuyez pour la caméra',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: _textSub,
                               fontFamily: 'Poppins',
                             )),
@@ -591,7 +647,7 @@ class _NewSignalementScreenState
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(7, 0, 7, 7),
+          padding: const EdgeInsets.fromLTRB(5, 0, 5, 5),
           child: Row(children: [
             Expanded(child: _imgBtn(
               icon: _photo != null
@@ -621,12 +677,12 @@ class _NewSignalementScreenState
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F3F3),
+          color: const Color(0xFFFDECEC),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: _redBorder.withValues(alpha: 0.35),
+            color: _redBorder.withValues(alpha: 0.3),
             width: 1.2)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -635,9 +691,9 @@ class _NewSignalementScreenState
             const SizedBox(width: 5),
             Text(label,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w700,
-                color: _textMain,
+                color: _primary,
                 fontFamily: 'Poppins',
               )),
           ],
@@ -646,21 +702,25 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 3. Description ─────────────────────────────────────
   Widget _descCard() {
     return Container(
       decoration: _cardBox(),
-      padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Description',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textMain,
-              fontFamily: 'Poppins',
-            )),
+          const Row(children: [
+            Icon(Icons.edit_note_rounded,
+              size: 14, color: _primary),
+            SizedBox(width: 5),
+            Text('Description',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _textMain,
+                fontFamily: 'Poppins',
+              )),
+          ]),
           const SizedBox(height: 4),
           Expanded(
             child: TextFormField(
@@ -674,31 +734,28 @@ class _NewSignalementScreenState
                 color: _textMain,
                 fontFamily: 'Poppins'),
               decoration: InputDecoration(
-                hintText:
-                  'Décrivez le problème observé...',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFBBBBBB),
+                hintText: 'Décrivez le problème...',
+                hintStyle: TextStyle(
+                  color: _textSub.withValues(alpha: 0.6),
                   fontSize: 11,
                   fontFamily: 'Poppins'),
                 filled: true,
                 fillColor: const Color(0xFFFAFAFA),
-                contentPadding: const EdgeInsets.all(9),
+                contentPadding: const EdgeInsets.all(8),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
                     color: _redBorder
-                      .withValues(alpha: 0.3),
-                    width: 1)),
+                      .withValues(alpha: 0.25), width: 1)),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
                     color: _redBorder
-                      .withValues(alpha: 0.3),
-                    width: 1)),
+                      .withValues(alpha: 0.25), width: 1)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(
-                    color: _primary, width: 1.8)),
+                    color: _primary, width: 2)),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(
@@ -714,22 +771,26 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 4. Categories — bigger height, clear labels ─────────
   Widget _catRow() {
     return Container(
       decoration: _cardBox(),
-      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Catégorie',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textMain,
-              fontFamily: 'Poppins',
-            )),
-          const SizedBox(height: 6),
+          const Row(children: [
+            Icon(Icons.category_outlined,
+              size: 13, color: _primary),
+            SizedBox(width: 5),
+            Text('Catégorie',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _textMain,
+                fontFamily: 'Poppins',
+              )),
+          ]),
+          const SizedBox(height: 5),
           Expanded(
             child: Row(
               children: List.generate(_cats.length, (i) {
@@ -744,41 +805,56 @@ class _NewSignalementScreenState
                         milliseconds: 150),
                       margin: EdgeInsets.only(
                         right: i < _cats.length - 1
-                          ? 5 : 0),
+                          ? 4 : 0),
                       decoration: BoxDecoration(
+                        gradient: sel
+                          ? const LinearGradient(
+                              colors: [
+                                _primary,
+                                Color(0xFFE53935)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight)
+                          : null,
                         color: sel
-                          ? _primary
+                          ? null
                           : const Color(0xFFF7F7F7),
                         borderRadius:
-                          BorderRadius.circular(8),
+                          BorderRadius.circular(10),
                         border: Border.all(
                           color: sel
                             ? _primary
                             : _redBorder.withValues(
-                                alpha: 0.3),
-                          width: sel ? 1.5 : 1)),
+                                alpha: 0.25),
+                          width: sel ? 0 : 1),
+                        boxShadow: sel ? [
+                          BoxShadow(
+                            color: _primary
+                              .withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2)),
+                        ] : null),
                       child: Column(
                         mainAxisAlignment:
                           MainAxisAlignment.center,
                         children: [
                           Icon(cat.icon,
-                            size: 18,
+                            size: 15,
                             color: sel
-                              ? Colors.white
-                              : _primary),
-                          const SizedBox(height: 4),
-                          Text(cat.label,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Poppins',
-                              color: sel
-                                ? Colors.white
-                                : _textMain,
-                            )),
+                              ? Colors.white : _primary),
+                          const SizedBox(height: 3),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(cat.label,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Poppins',
+                                color: sel
+                                  ? Colors.white
+                                  : _textMain,
+                              )),
+                          ),
                         ],
                       ),
                     ),
@@ -792,22 +868,26 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 5. Priority ────────────────────────────────────────
   Widget _prioRow() {
     return Container(
       decoration: _cardBox(),
-      padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Priorité',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _textMain,
-              fontFamily: 'Poppins',
-            )),
-          const SizedBox(height: 6),
+          const Row(children: [
+            Icon(Icons.flag_outlined,
+              size: 13, color: _primary),
+            SizedBox(width: 5),
+            Text('Priorité',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _textMain,
+                fontFamily: 'Poppins',
+              )),
+          ]),
+          const SizedBox(height: 5),
           Expanded(
             child: Row(
               children: List.generate(_prios.length, (i) {
@@ -828,32 +908,44 @@ class _NewSignalementScreenState
                           ? p.bg
                           : const Color(0xFFF7F7F7),
                         borderRadius:
-                          BorderRadius.circular(8),
+                          BorderRadius.circular(10),
                         border: Border.all(
                           color: sel
                             ? p.color
                             : _redBorder.withValues(
-                                alpha: 0.3),
-                          width: sel ? 1.8 : 1)),
+                                alpha: 0.25),
+                          width: sel ? 2 : 1),
+                        boxShadow: sel ? [
+                          BoxShadow(
+                            color: p.color
+                              .withValues(alpha: 0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2)),
+                        ] : null),
                       child: Column(
                         mainAxisAlignment:
                           MainAxisAlignment.center,
                         children: [
-                          Text(p.emoji,
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: p.color,
-                              fontWeight:
-                                FontWeight.w900)),
-                          const SizedBox(height: 3),
-                          Text(p.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              fontFamily: 'Poppins',
-                              color: sel
-                                ? p.color : _textMain,
-                            )),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(p.emoji,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: p.color,
+                                fontWeight:
+                                  FontWeight.w900))),
+                          const SizedBox(height: 2),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(p.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'Poppins',
+                                color: sel
+                                  ? p.color : _textMain,
+                              )),
+                          ),
                         ],
                       ),
                     ),
@@ -867,24 +959,26 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 6. Submit — compact ────────────────────────────────
   Widget _submitBtn() {
     return GestureDetector(
       onTap: _loading ? null : _submit,
       child: Container(
         decoration: BoxDecoration(
+          gradient: _loading
+            ? null
+            : const LinearGradient(
+                colors: [_primary, Color(0xFFE53935)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight),
           color: _loading
-            ? const Color(0xFFE0E0E0) : _primary,
+            ? const Color(0xFFE0E0E0) : null,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: _loading
-            ? []
-            : [
-                BoxShadow(
-                  color: _primary
-                    .withValues(alpha: 0.35),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3)),
-              ],
+          boxShadow: _loading ? [] : [
+            BoxShadow(
+              color: _primary.withValues(alpha: 0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4)),
+          ],
         ),
         child: Center(
           child: _loading
@@ -897,9 +991,9 @@ class _NewSignalementScreenState
                       color: Color(0xFF9E9E9E),
                       strokeWidth: 2)),
                   SizedBox(width: 8),
-                  Text('Envoi...',
+                  Text('Envoi en cours...',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF9E9E9E),
                       fontFamily: 'Poppins',
@@ -908,12 +1002,12 @@ class _NewSignalementScreenState
             : const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.send_rounded,
-                    color: Colors.white, size: 15),
-                  SizedBox(width: 7),
+                  Text('🚀',
+                    style: TextStyle(fontSize: 15)),
+                  SizedBox(width: 8),
                   Text('Envoyer le signalement',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       fontFamily: 'Poppins',
@@ -924,25 +1018,22 @@ class _NewSignalementScreenState
     );
   }
 
-  // ── 7. AI Hint — minimal ───────────────────────────────
   Widget _aiHint() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFE3F2FD),
+        color: _info.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: _info.withValues(alpha: 0.25),
-          width: 1)),
+          color: _info.withValues(alpha: 0.2), width: 1)),
       padding: const EdgeInsets.symmetric(
-        horizontal: 10, vertical: 4),
+        horizontal: 10),
       child: Row(children: [
         const Icon(Icons.auto_awesome,
           color: _info, size: 11),
         const SizedBox(width: 6),
         const Expanded(
           child: Text(
-            'L\'IA T HERO accélèrera la prise en charge '
-            'de votre signalement.',
+            '🤖 T HERO IA — Signalement traité en priorité',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

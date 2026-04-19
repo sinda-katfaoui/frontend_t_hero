@@ -57,20 +57,17 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
-
     final result = await AuthService.login(
       _emailCtrl.text, _passCtrl.text);
-
     if (!mounted) return;
     setState(() => _loading = false);
-
     if (result['success']) {
       final user = result['user'] as Map<String, dynamic>;
       final role = user['role'] as String;
       Widget screen;
       switch (role) {
-        case 'ADMIN':           screen = const AdminHomeScreen();   break;
-        case 'AGENT_MUNICIPAL': screen = const AgentHomeScreen();   break;
+        case 'ADMIN':           screen = const AdminHomeScreen();  break;
+        case 'AGENT_MUNICIPAL': screen = const AgentHomeScreen();  break;
         default:                screen = const CitoyenHomeScreen();
       }
       Navigator.pushReplacement(context,
@@ -95,13 +92,15 @@ class _LoginScreenState extends State<LoginScreen>
     final size   = MediaQuery.of(context).size;
 
     return Scaffold(
-      backgroundColor: isDark ? TColors.dark : TColors.light,
+      resizeToAvoidBottomInset: true,
+      backgroundColor: isDark
+        ? TColors.dark : const Color(0xFFEEEEEE),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: Column(children: [
 
-            // ── Gradient Hero Header ──────────────────────
+            // ── Gradient Header ───────────────────────────
             Container(
               height: size.height * 0.38,
               decoration: const BoxDecoration(
@@ -119,8 +118,6 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
               ),
               child: Stack(children: [
-
-                // Background circles
                 Positioned(
                   top: -30, right: -30,
                   child: Container(
@@ -137,7 +134,6 @@ class _LoginScreenState extends State<LoginScreen>
                       shape: BoxShape.circle,
                       color: Colors.white
                         .withValues(alpha: 0.05)))),
-
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     24, 20, 24, 28),
@@ -147,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen>
                     crossAxisAlignment:
                       CrossAxisAlignment.start,
                     children: [
-
-                      // Logo + name
                       Row(children: [
                         Container(
                           width: 44, height: 44,
@@ -214,9 +208,7 @@ class _LoginScreenState extends State<LoginScreen>
                               fontWeight: FontWeight.w600,
                             ))),
                       ]),
-
                       const SizedBox(height: 20),
-
                       const Text('Bon retour 👋',
                         style: TextStyle(
                           fontSize: 28,
@@ -234,10 +226,7 @@ class _LoginScreenState extends State<LoginScreen>
                           fontFamily: 'Poppins',
                           height: 1.5,
                         )),
-
                       const SizedBox(height: 16),
-
-                      // Role badges
                       Row(children: [
                         _roleBadge('👤 Citoyen'),
                         const SizedBox(width: 8),
@@ -257,237 +246,221 @@ class _LoginScreenState extends State<LoginScreen>
                 opacity: _fadeAnim,
                 child: SlideTransition(
                   position: _slideAnim,
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24),
                     child: Column(
-                      mainAxisAlignment:
-                        MainAxisAlignment.spaceEvenly,
                       crossAxisAlignment:
                         CrossAxisAlignment.stretch,
                       children: [
 
-                        Column(
-                          crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
-                          children: [
+                        const SizedBox(height: 24),
 
-                            // Email
-                            _field(
-                              controller: _emailCtrl,
-                              hint: 'votre@email.com',
-                              icon: Icons.email_outlined,
-                              isDark: isDark,
-                              keyboard:
-                                TextInputType.emailAddress,
-                              validator: (v) =>
-                                v!.isEmpty
-                                  ? 'Email requis' : null),
+                        // Email
+                        _field(
+                          controller: _emailCtrl,
+                          hint: 'votre@email.com',
+                          icon: Icons.email_outlined,
+                          isDark: isDark,
+                          keyboard:
+                            TextInputType.emailAddress,
+                          validator: (v) =>
+                            v!.isEmpty
+                              ? 'Email requis' : null),
 
-                            const SizedBox(height: 14),
+                        const SizedBox(height: 14),
 
-                            // Password
-                            Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                  ? TColors.darkContainer
-                                  : TColors.cardLight,
-                                borderRadius:
-                                  BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: TColors.primary,
-                                  width: 1.5)),
-                              padding:
-                                const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 2),
-                              child: Row(children: [
-                                const Icon(
-                                  Icons.lock_outline,
-                                  size: 22,
-                                  color: TColors.primary),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _passCtrl,
-                                    obscureText: _obscure,
-                                    style: TextStyle(
+                        // Password
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius:
+                              BorderRadius.circular(14),
+                            border: Border.all(
+                              color: TColors.primary,
+                              width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black
+                                  .withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3)),
+                            ]),
+                          padding:
+                            const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 2),
+                          child: Row(children: [
+                            const Icon(
+                              Icons.lock_outline,
+                              size: 22,
+                              color: TColors.primary),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _passCtrl,
+                                obscureText: _obscure,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: TColors.textPrimary,
+                                  fontFamily: 'Poppins'),
+                                decoration:
+                                  const InputDecoration(
+                                    hintText: '••••••••',
+                                    hintStyle: TextStyle(
                                       fontSize: 16,
-                                      color: isDark
-                                        ? TColors.textWhite
-                                        : TColors.textPrimary,
+                                      color: TColors.textHint,
                                       fontFamily: 'Poppins'),
-                                    decoration:
-                                      const InputDecoration(
-                                        hintText: '••••••••',
-                                        hintStyle: TextStyle(
-                                          fontSize: 16,
-                                          color: TColors.textHint,
-                                          fontFamily: 'Poppins'),
-                                        border: InputBorder.none,
-                                        enabledBorder:
-                                          InputBorder.none,
-                                        focusedBorder:
-                                          InputBorder.none,
-                                        isDense: true,
-                                        contentPadding:
-                                          EdgeInsets.symmetric(
-                                            vertical: 14)),
-                                    validator: (v) =>
-                                      v!.length < 6
-                                        ? 'Min 6 caractères'
-                                        : null,
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => setState(
-                                    () => _obscure = !_obscure),
-                                  child: Icon(
-                                    _obscure
-                                      ? Icons.visibility_outlined
-                                      : Icons
-                                          .visibility_off_outlined,
-                                    size: 22,
-                                    color: TColors.primary)),
-                              ]),
-                            ),
-
-                            const SizedBox(height: 4),
-
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {},
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize:
-                                    MaterialTapTargetSize
-                                      .shrinkWrap),
-                                child: const Text(
-                                  'Mot de passe oublié?',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: TColors.primary,
-                                    fontFamily: 'Poppins',
-                                  ))),
-                            ),
-                          ],
-                        ),
-
-                        Column(
-                          crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
-                          children: [
-
-                            // Login button
-                            SizedBox(
-                              height: 54,
-                              child: ElevatedButton(
-                                onPressed:
-                                  _loading ? null : _login,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                    TColors.primary,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                      BorderRadius.circular(16)),
-                                  elevation: 0,
-                                  shadowColor: TColors.primary
-                                    .withValues(alpha: 0.4),
-                                ),
-                                child: _loading
-                                  ? const SizedBox(
-                                      height: 22, width: 22,
-                                      child:
-                                        CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2))
-                                  : const Row(
-                                      mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.login_rounded,
-                                          size: 18),
-                                        SizedBox(width: 8),
-                                        Text('Se connecter',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight:
-                                              FontWeight.w700,
-                                            fontFamily: 'Poppins',
-                                          )),
-                                      ]),
+                                    border: InputBorder.none,
+                                    enabledBorder:
+                                      InputBorder.none,
+                                    focusedBorder:
+                                      InputBorder.none,
+                                    isDense: true,
+                                    contentPadding:
+                                      EdgeInsets.symmetric(
+                                        vertical: 14)),
+                                validator: (v) =>
+                                  v!.length < 6
+                                    ? 'Min 6 caractères'
+                                    : null,
                               ),
                             ),
+                            GestureDetector(
+                              onTap: () => setState(
+                                () => _obscure = !_obscure),
+                              child: Icon(
+                                _obscure
+                                  ? Icons.visibility_outlined
+                                  : Icons
+                                      .visibility_off_outlined,
+                                size: 22,
+                                color: TColors.primary)),
+                          ]),
+                        ),
 
-                            const SizedBox(height: 14),
+                        const SizedBox(height: 4),
 
-                            Row(children: [
-                              Expanded(child: Divider(
-                                color: TColors.borderLight,
-                                thickness: 0.5)),
-                              Padding(
-                                padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 14),
-                                child: Text('ou',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: TColors.textHint,
-                                    fontFamily: 'Poppins'))),
-                              Expanded(child: Divider(
-                                color: TColors.borderLight,
-                                thickness: 0.5)),
-                            ]),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {},
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize:
+                                MaterialTapTargetSize
+                                  .shrinkWrap),
+                            child: const Text(
+                              'Mot de passe oublié?',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: TColors.primary,
+                                fontFamily: 'Poppins',
+                              ))),
+                        ),
 
-                            const SizedBox(height: 14),
+                        const SizedBox(height: 24),
 
-                            // Register button
-                            SizedBox(
-                              height: 54,
-                              child: OutlinedButton(
-                                onPressed: () =>
-                                  Navigator.push(context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                        const RegisterScreen())),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor:
-                                    TColors.primary,
-                                  side: const BorderSide(
-                                    color: TColors.primary,
-                                    width: 1.5),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                      BorderRadius.circular(16)),
-                                ),
-                                child: const Row(
+                        // Login button
+                        SizedBox(
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed:
+                              _loading ? null : _login,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: TColors.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                  BorderRadius.circular(16)),
+                              elevation: 0),
+                            child: _loading
+                              ? const SizedBox(
+                                  height: 22, width: 22,
+                                  child:
+                                    CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2))
+                              : const Row(
                                   mainAxisAlignment:
                                     MainAxisAlignment.center,
                                   children: [
                                     Icon(
-                                      Icons.person_add_outlined,
-                                      size: 18,
-                                      color: TColors.primary),
+                                      Icons.login_rounded,
+                                      size: 18),
                                     SizedBox(width: 8),
-                                    Text('Créer un compte',
+                                    Text('Se connecter',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight:
-                                          FontWeight.w600,
+                                          FontWeight.w700,
                                         fontFamily: 'Poppins',
-                                        color: TColors.primary,
                                       )),
                                   ]),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
 
-                        // Footer
+                        const SizedBox(height: 16),
+
+                        Row(children: [
+                          Expanded(child: Divider(
+                            color: TColors.borderLight,
+                            thickness: 0.5)),
+                          Padding(
+                            padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 14),
+                            child: Text('ou',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: TColors.textHint,
+                                fontFamily: 'Poppins'))),
+                          Expanded(child: Divider(
+                            color: TColors.borderLight,
+                            thickness: 0.5)),
+                        ]),
+
+                        const SizedBox(height: 16),
+
+                        // Register button
+                        SizedBox(
+                          height: 54,
+                          child: OutlinedButton(
+                            onPressed: () =>
+                              Navigator.push(context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                    const RegisterScreen())),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: TColors.primary,
+                              side: const BorderSide(
+                                color: TColors.primary,
+                                width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                  BorderRadius.circular(16))),
+                            child: const Row(
+                              mainAxisAlignment:
+                                MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.person_add_outlined,
+                                  size: 18,
+                                  color: TColors.primary),
+                                SizedBox(width: 8),
+                                Text('Créer un compte',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Poppins',
+                                    color: TColors.primary,
+                                  )),
+                              ]),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
                         Center(
                           child: Text(
                             '🦸 Sois le Héros de ta Ville !',
@@ -497,6 +470,8 @@ class _LoginScreenState extends State<LoginScreen>
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w500,
                             ))),
+
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
@@ -538,11 +513,16 @@ class _LoginScreenState extends State<LoginScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark
-          ? TColors.darkContainer : TColors.cardLight,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: TColors.borderLight, width: 0.5)),
+          color: const Color(0xFFDDDDDD), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3)),
+        ]),
       padding: const EdgeInsets.symmetric(
         horizontal: 16, vertical: 2),
       child: Row(children: [
@@ -552,10 +532,9 @@ class _LoginScreenState extends State<LoginScreen>
           child: TextFormField(
             controller: controller,
             keyboardType: keyboard,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
-              color: isDark
-                ? TColors.textWhite : TColors.textPrimary,
+              color: TColors.textPrimary,
               fontFamily: 'Poppins'),
             decoration: InputDecoration(
               hintText: hint,
