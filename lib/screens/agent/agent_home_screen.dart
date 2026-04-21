@@ -76,12 +76,30 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
         final resolved = allMine
           .where((s) => s['statut'] == 'RESOLU').toList();
 
-        int sortPrio(a, b) =>
-          _prioOrder(a['priorite'] ?? 'FAIBLE')
-            .compareTo(_prioOrder(b['priorite'] ?? 'FAIBLE'));
+        // ── UPDATED: sort by priority first, then by AI score descending ──
+        int sortByPrioAndScore(a, b) {
+          final prioA = _prioOrder(a['priorite'] ?? 'FAIBLE');
+          final prioB = _prioOrder(b['priorite'] ?? 'FAIBLE');
 
-        active.sort(sortPrio);
-        resolved.sort(sortPrio);
+          // First sort by priority level (ELEVEE → MOYENNE → FAIBLE)
+          if (prioA != prioB) return prioA.compareTo(prioB);
+
+          // Same priority → sort by AI score descending
+          final analyseA = a['analyseIA'];
+          final analyseB = b['analyseIA'];
+
+          final scoreA = analyseA is Map
+            ? ((analyseA['scoreConfiance'] ?? 0) as num).toDouble()
+            : 0.0;
+          final scoreB = analyseB is Map
+            ? ((analyseB['scoreConfiance'] ?? 0) as num).toDouble()
+            : 0.0;
+
+          return scoreB.compareTo(scoreA); // descending score
+        }
+
+        active.sort(sortByPrioAndScore);
+        resolved.sort(sortByPrioAndScore);
 
         setState(() {
           _assigned = active;
@@ -209,18 +227,15 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
     String aiPriority = '';
 
     if (analyseIA is Map) {
-      // These match the fields saved by analyseAI.controller.js
       aiScore    = ((analyseIA['scoreConfiance'] ?? 0) as num).toDouble();
       aiCat      = analyseIA['resultatCategorie'] ?? cat;
       aiPriority = analyseIA['resultatPriorite']  ?? '';
     }
 
-    // Use real AI score for progress bar, fallback to priority-based
     double prioScore = aiScore > 0
       ? aiScore
       : (prio == 'ELEVEE' ? 1.0 : prio == 'MOYENNE' ? 0.6 : 0.3);
 
-    // Map AI category to French label
     String aiCatLabel(String c) {
       const m = {
         'VOIRIE':        'Voirie',
@@ -346,7 +361,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    // Priority Level Card
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8F9FA),
@@ -381,7 +395,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                   color: _prioColor(prio),
                                   borderRadius: BorderRadius.circular(20)),
                                 child: Text(
-                                  // FIXED: show real AI score %
                                   aiScore > 0
                                     ? '${(aiScore * 100).toStringAsFixed(1)}%'
                                     : '${(prioScore * 100).toInt()}%',
@@ -437,7 +450,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    // FIXED AI card — shows real Gemini data
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -475,7 +487,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                 color: Colors.white.withValues(alpha: 0.25),
                                 borderRadius: BorderRadius.circular(20)),
                               child: Text(
-                                // FIXED: real score from MongoDB
                                 aiScore > 0
                                   ? '${(aiScore * 100).toStringAsFixed(0)}%'
                                   : 'N/A',
@@ -515,7 +526,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                               )),
                           ]),
                           const SizedBox(height: 10),
-                          // Extra AI details row
                           Row(children: [
                             Expanded(
                               child: Column(
@@ -1086,6 +1096,12 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
     final time   = _timeAgo(s['createdAt']);
     final prio   = s['priorite'] ?? 'FAIBLE';
 
+    // Show AI score in card if available
+    final analyseIA = s['analyseIA'];
+    final aiScore = analyseIA is Map
+      ? ((analyseIA['scoreConfiance'] ?? 0) as num).toDouble()
+      : 0.0;
+
     return GestureDetector(
       onTap: () => _showDetail(s),
       child: Container(
@@ -1183,6 +1199,24 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                             color: _prioColor(prio),
                             fontFamily: 'Poppins',
                           )),
+                        // ── UPDATED: show AI score in card ──
+                        if (aiScore > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: TColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10)),
+                            child: Text(
+                              '🤖 ${(aiScore * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: TColors.primary,
+                                fontFamily: 'Poppins',
+                              ))),
+                        ],
                         const Spacer(),
                         const Row(children: [
                           Text('Voir mission',
