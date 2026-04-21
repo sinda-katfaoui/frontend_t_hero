@@ -56,6 +56,8 @@ class _NewSignalementScreenState
   String  _locLabel   = 'Localisation en cours...';
   String  _cityLabel  = 'Détection GPS';
 
+  bool    _aiDone = false;
+
   static const _cats = [
     _Cat('Voirie',    Icons.warning_amber_rounded,
       '69b5f22c1a712fbb5e43b63e'),
@@ -77,6 +79,15 @@ class _NewSignalementScreenState
     _Prio('ELEVEE',  'Élevée',  '↑',
       _primary,          Color(0xFFFDECEC)),
   ];
+
+  static const _aiCatMap = {
+    'road':           0,
+    'lighting':       1,
+    'waste':          2,
+    'infrastructure': 3,
+    'other':          4,
+    'danger':         0,
+  };
 
   @override
   void initState() {
@@ -145,11 +156,87 @@ class _NewSignalementScreenState
     try {
       final p = await ImagePicker()
         .pickImage(source: src, imageQuality: 80);
-      if (p != null)
-        setState(() => _photo = File(p.path));
+      if (p != null) {
+        setState(() {
+          _photo        = File(p.path);
+          _aiDone       = false;
+        });
+        await _runAiAnalysis(File(p.path));
+      }
     } catch (e) {
       if (mounted) _snack('Erreur: $e', _primary);
     }
+  }
+
+  Future<void> _runAiAnalysis(File imageFile) async {
+    try {
+      final prefs       = await SharedPreferences.getInstance();
+      final token       = prefs.getString('token') ?? '';
+      final bytes       = await imageFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+
+      final response = await http.post(
+        Uri.parse('${ApiConstants.baseUrl}/analyseAI/analyze'),
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'image': base64Image,
+          'zone':  _locLabel,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (!mounted) return;
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        final ai   = data['ai'] as Map<String, dynamic>;
+
+        final detectedCategory = ai['category'] as String;
+        final detectedPriority = ai['priority']  as String;
+        (ai['score']      as num).toDouble();
+        (ai['confidence'] as num).toDouble();
+
+        final prioMap = {
+          'critical': 'ELEVEE',
+          'high':     'ELEVEE',
+          'medium':   'MOYENNE',
+          'low':      'FAIBLE',
+        };
+
+        setState(() {
+          _aiDone       = true;
+          _catIndex     = _aiCatMap[detectedCategory] ?? 4;
+          _priorite     = prioMap[detectedPriority] ?? 'MOYENNE';
+        });
+
+        _snack(
+          '🤖 IA: ${_categoryLabel(detectedCategory)} — ${_priorityLabel(detectedPriority)}',
+          _success);
+      } else {
+        setState(() { _aiDone = false; });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _aiDone = false; });
+    }
+  }
+
+  String _categoryLabel(String cat) {
+    const m = {
+      'road': 'Voirie', 'waste': 'Propreté',
+      'lighting': 'Éclairage', 'danger': 'Voirie',
+      'infrastructure': 'Espaces', 'other': 'Autre',
+    };
+    return m[cat] ?? cat;
+  }
+
+  String _priorityLabel(String p) {
+    const m = {
+      'critical': 'Critique', 'high': 'Élevée',
+      'medium': 'Moyenne',    'low':  'Faible',
+    };
+    return m[p] ?? p;
   }
 
   Future<void> _submit() async {
@@ -195,6 +282,25 @@ class _NewSignalementScreenState
       if (!mounted) return;
       setState(() => _loading = false);
       if (response.statusCode == 201) {
+        // FIX: link AI analysis to the signalement
+        try {
+          final sigId = jsonDecode(response.body)['data']['_id'] as String?;
+          if (sigId != null && sigId.isNotEmpty) {
+            final bytes = await _photo!.readAsBytes();
+            await http.post(
+              Uri.parse('${ApiConstants.baseUrl}/analyseAI/analyze'),
+              headers: {
+                'Content-Type':  'application/json',
+                'Authorization': 'Bearer $token',
+              },
+              body: jsonEncode({
+                'image':         base64Encode(bytes),
+                'signalementId': sigId,
+                'zone':          _locLabel,
+              }),
+            ).timeout(const Duration(seconds: 30));
+          }
+        } catch (_) {}
         Navigator.pop(context);
         _snack('Signalement envoyé ✓', _success);
       } else {
@@ -246,60 +352,26 @@ class _NewSignalementScreenState
         child: Form(
           key: _formKey,
           child: Column(children: [
-
-            // ── Header ──────────────────────────────────
             _buildHeader(),
-
-            // ── Body fills remaining space ───────────────
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  12, 8, 12, 8),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 child: Column(
-                  crossAxisAlignment:
-                    CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-
-                    // 1. GPS
-                    Expanded(
-                      flex: 9,
-                      child: _gpsBar()),
+                    Expanded(flex: 9,  child: _gpsBar()),
                     const SizedBox(height: 6),
-
-                    // 2. Photo
-                    Expanded(
-                      flex: 26,
-                      child: _photoCard()),
+                    Expanded(flex: 26, child: _photoCard()),
                     const SizedBox(height: 6),
-
-                    // 3. Description
-                    Expanded(
-                      flex: 14,
-                      child: _descCard()),
+                    Expanded(flex: 14, child: _descCard()),
                     const SizedBox(height: 6),
-
-                    // 4. Categories
-                    Expanded(
-                      flex: 14,
-                      child: _catRow()),
+                    Expanded(flex: 14, child: _catRow()),
                     const SizedBox(height: 6),
-
-                    // 5. Priority
-                    Expanded(
-                      flex: 13,
-                      child: _prioRow()),
+                    Expanded(flex: 13, child: _prioRow()),
                     const SizedBox(height: 6),
-
-                    // 6. Submit
-                    Expanded(
-                      flex: 9,
-                      child: _submitBtn()),
+                    Expanded(flex: 9,  child: _submitBtn()),
                     const SizedBox(height: 4),
-
-                    // 7. AI hint
-                    Expanded(
-                      flex: 4,
-                      child: _aiHint()),
+                    Expanded(flex: 4,  child: _aiHint()),
                   ],
                 ),
               ),
@@ -325,7 +397,6 @@ class _NewSignalementScreenState
       ),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Column(children: [
-
         Row(children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
@@ -335,8 +406,7 @@ class _NewSignalementScreenState
                 color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white
-                    .withValues(alpha: 0.3))),
+                  color: Colors.white.withValues(alpha: 0.3))),
               child: const Icon(
                 Icons.arrow_back_ios_new,
                 color: Colors.white, size: 14)),
@@ -384,9 +454,7 @@ class _NewSignalementScreenState
             ]),
           ),
         ]),
-
         const SizedBox(height: 10),
-
         Container(
           padding: const EdgeInsets.symmetric(
             horizontal: 12, vertical: 8),
@@ -401,8 +469,7 @@ class _NewSignalementScreenState
             const SizedBox(width: 10),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Signalez, protégez votre ville !',
@@ -416,8 +483,7 @@ class _NewSignalementScreenState
                     'Chaque signalement compte 💪',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Colors.white
-                        .withValues(alpha: 0.85),
+                      color: Colors.white.withValues(alpha: 0.85),
                       fontFamily: 'Poppins',
                     )),
                 ],
@@ -520,8 +586,7 @@ class _NewSignalementScreenState
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
           child: Row(
-            mainAxisAlignment:
-              MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Row(children: [
                 Icon(Icons.camera_alt_outlined,
@@ -552,8 +617,7 @@ class _NewSignalementScreenState
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
-                    color: _photo != null
-                      ? _success : _primary,
+                    color: _photo != null ? _success : _primary,
                     fontFamily: 'Poppins',
                   ))),
             ],
@@ -572,19 +636,16 @@ class _NewSignalementScreenState
                       Positioned(
                         bottom: 6, right: 6,
                         child: Container(
-                          padding:
-                            const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
                             color: _success,
-                            borderRadius:
-                              BorderRadius.circular(7)),
+                            borderRadius: BorderRadius.circular(7)),
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.check,
-                                color: Colors.white,
-                                size: 10),
+                                color: Colors.white, size: 10),
                               SizedBox(width: 3),
                               Text('Photo OK',
                                 style: TextStyle(
@@ -603,15 +664,12 @@ class _NewSignalementScreenState
                             Color(0xFFFFF8F8)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight),
-                        borderRadius:
-                          BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(9),
                         border: Border.all(
-                          color: _redBorder
-                            .withValues(alpha: 0.2),
+                          color: _redBorder.withValues(alpha: 0.2),
                           width: 1.5)),
                       child: Column(
-                        mainAxisAlignment:
-                          MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
                             width: 40, height: 40,
@@ -653,16 +711,13 @@ class _NewSignalementScreenState
               icon: _photo != null
                 ? Icons.refresh_rounded
                 : Icons.camera_alt_outlined,
-              label: _photo != null
-                ? 'Reprendre' : 'Caméra',
-              onTap: () =>
-                _pickImage(ImageSource.camera))),
+              label: _photo != null ? 'Reprendre' : 'Caméra',
+              onTap: () => _pickImage(ImageSource.camera))),
             const SizedBox(width: 6),
             Expanded(child: _imgBtn(
               icon: Icons.photo_library_outlined,
               label: 'Galerie',
-              onTap: () =>
-                _pickImage(ImageSource.gallery))),
+              onTap: () => _pickImage(ImageSource.gallery))),
           ]),
         ),
       ]),
@@ -745,13 +800,13 @@ class _NewSignalementScreenState
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: _redBorder
-                      .withValues(alpha: 0.25), width: 1)),
+                    color: _redBorder.withValues(alpha: 0.25),
+                    width: 1)),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(
-                    color: _redBorder
-                      .withValues(alpha: 0.25), width: 1)),
+                    color: _redBorder.withValues(alpha: 0.25),
+                    width: 1)),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(
@@ -778,17 +833,33 @@ class _NewSignalementScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Icon(Icons.category_outlined,
+          Row(children: [
+            const Icon(Icons.category_outlined,
               size: 13, color: _primary),
-            SizedBox(width: 5),
-            Text('Catégorie',
+            const SizedBox(width: 5),
+            const Text('Catégorie',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: _textMain,
                 fontFamily: 'Poppins',
               )),
+            if (_aiDone) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: _success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
+                child: const Text('auto IA',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: _success,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  ))),
+            ],
           ]),
           const SizedBox(height: 5),
           Expanded(
@@ -798,49 +869,37 @@ class _NewSignalementScreenState
                 final sel = i == _catIndex;
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () =>
-                      setState(() => _catIndex = i),
+                    onTap: () => setState(() => _catIndex = i),
                     child: AnimatedContainer(
-                      duration: const Duration(
-                        milliseconds: 150),
+                      duration: const Duration(milliseconds: 150),
                       margin: EdgeInsets.only(
-                        right: i < _cats.length - 1
-                          ? 4 : 0),
+                        right: i < _cats.length - 1 ? 4 : 0),
                       decoration: BoxDecoration(
                         gradient: sel
                           ? const LinearGradient(
-                              colors: [
-                                _primary,
-                                Color(0xFFE53935)],
+                              colors: [_primary, Color(0xFFE53935)],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight)
                           : null,
-                        color: sel
-                          ? null
-                          : const Color(0xFFF7F7F7),
-                        borderRadius:
-                          BorderRadius.circular(10),
+                        color: sel ? null : const Color(0xFFF7F7F7),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: sel
                             ? _primary
-                            : _redBorder.withValues(
-                                alpha: 0.25),
+                            : _redBorder.withValues(alpha: 0.25),
                           width: sel ? 0 : 1),
                         boxShadow: sel ? [
                           BoxShadow(
-                            color: _primary
-                              .withValues(alpha: 0.3),
+                            color: _primary.withValues(alpha: 0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 2)),
                         ] : null),
                       child: Column(
-                        mainAxisAlignment:
-                          MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(cat.icon,
                             size: 15,
-                            color: sel
-                              ? Colors.white : _primary),
+                            color: sel ? Colors.white : _primary),
                           const SizedBox(height: 3),
                           FittedBox(
                             fit: BoxFit.scaleDown,
@@ -851,8 +910,7 @@ class _NewSignalementScreenState
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'Poppins',
                                 color: sel
-                                  ? Colors.white
-                                  : _textMain,
+                                  ? Colors.white : _textMain,
                               )),
                           ),
                         ],
@@ -875,17 +933,33 @@ class _NewSignalementScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(children: [
-            Icon(Icons.flag_outlined,
+          Row(children: [
+            const Icon(Icons.flag_outlined,
               size: 13, color: _primary),
-            SizedBox(width: 5),
-            Text('Priorité',
+            const SizedBox(width: 5),
+            const Text('Priorité',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: _textMain,
                 fontFamily: 'Poppins',
               )),
+            if (_aiDone) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: _success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10)),
+                child: const Text('auto IA',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: _success,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
+                  ))),
+            ],
           ]),
           const SizedBox(height: 5),
           Expanded(
@@ -895,36 +969,28 @@ class _NewSignalementScreenState
                 final sel = _priorite == p.key;
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () =>
-                      setState(() => _priorite = p.key),
+                    onTap: () => setState(() => _priorite = p.key),
                     child: AnimatedContainer(
-                      duration: const Duration(
-                        milliseconds: 150),
+                      duration: const Duration(milliseconds: 150),
                       margin: EdgeInsets.only(
-                        right: i < _prios.length - 1
-                          ? 6 : 0),
+                        right: i < _prios.length - 1 ? 6 : 0),
                       decoration: BoxDecoration(
                         color: sel
-                          ? p.bg
-                          : const Color(0xFFF7F7F7),
-                        borderRadius:
-                          BorderRadius.circular(10),
+                          ? p.bg : const Color(0xFFF7F7F7),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: sel
                             ? p.color
-                            : _redBorder.withValues(
-                                alpha: 0.25),
+                            : _redBorder.withValues(alpha: 0.25),
                           width: sel ? 2 : 1),
                         boxShadow: sel ? [
                           BoxShadow(
-                            color: p.color
-                              .withValues(alpha: 0.2),
+                            color: p.color.withValues(alpha: 0.2),
                             blurRadius: 6,
                             offset: const Offset(0, 2)),
                         ] : null),
                       child: Column(
-                        mainAxisAlignment:
-                          MainAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           FittedBox(
                             fit: BoxFit.scaleDown,
@@ -932,8 +998,7 @@ class _NewSignalementScreenState
                               style: TextStyle(
                                 fontSize: 16,
                                 color: p.color,
-                                fontWeight:
-                                  FontWeight.w900))),
+                                fontWeight: FontWeight.w900))),
                           const SizedBox(height: 2),
                           FittedBox(
                             fit: BoxFit.scaleDown,
@@ -942,8 +1007,7 @@ class _NewSignalementScreenState
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'Poppins',
-                                color: sel
-                                  ? p.color : _textMain,
+                                color: sel ? p.color : _textMain,
                               )),
                           ),
                         ],
@@ -970,8 +1034,7 @@ class _NewSignalementScreenState
                 colors: [_primary, Color(0xFFE53935)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight),
-          color: _loading
-            ? const Color(0xFFE0E0E0) : null,
+          color: _loading ? const Color(0xFFE0E0E0) : null,
           borderRadius: BorderRadius.circular(12),
           boxShadow: _loading ? [] : [
             BoxShadow(
@@ -1002,8 +1065,7 @@ class _NewSignalementScreenState
             : const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('🚀',
-                    style: TextStyle(fontSize: 15)),
+                  Text('🚀', style: TextStyle(fontSize: 15)),
                   SizedBox(width: 8),
                   Text('Envoyer le signalement',
                     style: TextStyle(
@@ -1025,11 +1087,9 @@ class _NewSignalementScreenState
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: _info.withValues(alpha: 0.2), width: 1)),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       child: Row(children: [
-        const Icon(Icons.auto_awesome,
-          color: _info, size: 11),
+        const Icon(Icons.auto_awesome, color: _info, size: 11),
         const SizedBox(width: 6),
         const Expanded(
           child: Text(

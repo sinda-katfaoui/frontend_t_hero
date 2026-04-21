@@ -130,7 +130,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
           _showSnack('Statut mis à jour ✓', TColors.success);
         }
         await _fetchSignalements();
-        // Refresh profile stats too
         _profileKey.currentState?.refreshStats();
       } else {
         _showSnack('Erreur lors de la mise à jour', TColors.error);
@@ -202,16 +201,36 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
     final citoyen    = s['citoyen'];
     final citoyenNom = citoyen is Map
       ? citoyen['nom'] ?? '—' : '—';
+
+    // ── FIXED: read real AI data from MongoDB ──
     final analyseIA  = s['analyseIA'];
     double aiScore   = 0.0;
     String aiCat     = cat;
+    String aiPriority = '';
+
     if (analyseIA is Map) {
-      aiScore = (analyseIA['scoreIA'] ?? 0).toDouble();
-      aiCat   = analyseIA['categorieIA'] ?? cat;
+      // These match the fields saved by analyseAI.controller.js
+      aiScore    = ((analyseIA['scoreConfiance'] ?? 0) as num).toDouble();
+      aiCat      = analyseIA['resultatCategorie'] ?? cat;
+      aiPriority = analyseIA['resultatPriorite']  ?? '';
     }
 
-    double prioScore = prio == 'ELEVEE' ? 1.0
-      : prio == 'MOYENNE' ? 0.6 : 0.3;
+    // Use real AI score for progress bar, fallback to priority-based
+    double prioScore = aiScore > 0
+      ? aiScore
+      : (prio == 'ELEVEE' ? 1.0 : prio == 'MOYENNE' ? 0.6 : 0.3);
+
+    // Map AI category to French label
+    String aiCatLabel(String c) {
+      const m = {
+        'VOIRIE':        'Voirie',
+        'ECLAIRAGE':     'Éclairage',
+        'PROPRETE':      'Propreté',
+        'ESPACES_VERTS': 'Espaces Verts',
+        'AUTRE':         'Autre',
+      };
+      return m[c] ?? c;
+    }
 
     String selectedStatut = statut;
 
@@ -276,10 +295,8 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 3),
                           decoration: BoxDecoration(
-                            color: Colors.white
-                              .withValues(alpha: 0.2),
-                            borderRadius:
-                              BorderRadius.circular(20)),
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20)),
                           child: Text(
                             _statusLabel(selectedStatut),
                             style: const TextStyle(
@@ -310,8 +327,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                         color: const Color(0xFFF8F9FA),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: TColors.borderLight,
-                          width: 0.5)),
+                          color: TColors.borderLight, width: 0.5)),
                       padding: const EdgeInsets.all(14),
                       child: Column(children: [
                         _infoRow(Icons.person_outline,
@@ -336,13 +352,11 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                         color: const Color(0xFFF8F9FA),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _prioColor(prio)
-                            .withValues(alpha: 0.3),
+                          color: _prioColor(prio).withValues(alpha: 0.3),
                           width: 1)),
                       padding: const EdgeInsets.all(14),
                       child: Column(
-                        crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             mainAxisAlignment:
@@ -350,8 +364,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                             children: [
                               Row(children: [
                                 Icon(Icons.speed_rounded,
-                                  size: 18,
-                                  color: _prioColor(prio)),
+                                  size: 18, color: _prioColor(prio)),
                                 const SizedBox(width: 8),
                                 Text('Niveau de priorité',
                                   style: TextStyle(
@@ -362,16 +375,16 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                   )),
                               ]),
                               Container(
-                                padding:
-                                  const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 5),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 5),
                                 decoration: BoxDecoration(
                                   color: _prioColor(prio),
-                                  borderRadius:
-                                    BorderRadius.circular(20)),
+                                  borderRadius: BorderRadius.circular(20)),
                                 child: Text(
-                                  '${(prioScore * 100).toInt()}%',
+                                  // FIXED: show real AI score %
+                                  aiScore > 0
+                                    ? '${(aiScore * 100).toStringAsFixed(1)}%'
+                                    : '${(prioScore * 100).toInt()}%',
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: Colors.white,
@@ -382,15 +395,13 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                           ),
                           const SizedBox(height: 10),
                           ClipRRect(
-                            borderRadius:
-                              BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8),
                             child: LinearProgressIndicator(
                               value: prioScore,
                               backgroundColor: _prioColor(prio)
                                 .withValues(alpha: 0.15),
-                              valueColor:
-                                AlwaysStoppedAnimation(
-                                  _prioColor(prio)),
+                              valueColor: AlwaysStoppedAnimation(
+                                _prioColor(prio)),
                               minHeight: 10,
                             ),
                           ),
@@ -426,14 +437,13 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
 
                     const SizedBox(height: 14),
 
-                    // AI card
+                    // FIXED AI card — shows real Gemini data
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
                             TColors.primary,
-                            TColors.primary
-                              .withValues(alpha: 0.75),
+                            TColors.primary.withValues(alpha: 0.75),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -448,8 +458,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                           children: [
                             const Row(children: [
                               Icon(Icons.auto_awesome,
-                                size: 18,
-                                color: Colors.white),
+                                size: 18, color: Colors.white),
                               SizedBox(width: 8),
                               Text('Analyse IA T HERO',
                                 style: TextStyle(
@@ -460,16 +469,13 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                 )),
                             ]),
                             Container(
-                              padding:
-                                const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 5),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
-                                color: Colors.white
-                                  .withValues(alpha: 0.25),
-                                borderRadius:
-                                  BorderRadius.circular(20)),
+                                color: Colors.white.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(20)),
                               child: Text(
+                                // FIXED: real score from MongoDB
                                 aiScore > 0
                                   ? '${(aiScore * 100).toStringAsFixed(0)}%'
                                   : 'N/A',
@@ -486,8 +492,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                           Row(children: [
                             Expanded(
                               child: ClipRRect(
-                                borderRadius:
-                                  BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(6),
                                 child: LinearProgressIndicator(
                                   value: aiScore,
                                   backgroundColor: Colors.white
@@ -509,28 +514,67 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                 fontFamily: 'Poppins',
                               )),
                           ]),
+                          const SizedBox(height: 10),
+                          // Extra AI details row
+                          Row(children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                children: [
+                                  Text('Catégorie détectée',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white
+                                        .withValues(alpha: 0.75),
+                                      fontFamily: 'Poppins',
+                                    )),
+                                  const SizedBox(height: 2),
+                                  Text(aiCatLabel(aiCat),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                      fontFamily: 'Poppins',
+                                    )),
+                                ],
+                              ),
+                            ),
+                            if (aiPriority.isNotEmpty)
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                    CrossAxisAlignment.end,
+                                  children: [
+                                    Text('Priorité IA',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white
+                                          .withValues(alpha: 0.75),
+                                        fontFamily: 'Poppins',
+                                      )),
+                                    const SizedBox(height: 2),
+                                    Text(aiPriority,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        fontFamily: 'Poppins',
+                                      )),
+                                  ],
+                                ),
+                              ),
+                          ]),
+                        ] else ...[
+                          const SizedBox(height: 10),
+                          Text(
+                            'Aucune analyse IA disponible pour ce signalement',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontFamily: 'Poppins',
+                            )),
                         ],
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Catégorie suggérée',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white
-                                  .withValues(alpha: 0.8),
-                                fontFamily: 'Poppins',
-                              )),
-                            Text(aiCat,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                                fontFamily: 'Poppins',
-                              )),
-                          ],
-                        ),
                       ]),
                     ),
 
@@ -549,25 +593,21 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                     ]),
                     const SizedBox(height: 10),
 
-                    ...['EN_ATTENTE', 'EN_COURS', 'RESOLU']
-                      .map((st) {
+                    ...['EN_ATTENTE', 'EN_COURS', 'RESOLU'].map((st) {
                       final isSel = selectedStatut == st;
                       return GestureDetector(
                         onTap: () =>
                           setSheet(() => selectedStatut = st),
                         child: AnimatedContainer(
-                          duration:
-                            const Duration(milliseconds: 200),
-                          margin: const EdgeInsets.only(
-                            bottom: 10),
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             color: isSel
                               ? _statusBg(st)
                               : const Color(0xFFF8F9FA),
-                            borderRadius:
-                              BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: isSel
                                 ? _statusColor(st)
@@ -597,8 +637,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                                 style: TextStyle(fontSize: 16)),
                             if (isSel && st != 'RESOLU')
                               Icon(Icons.check_circle_rounded,
-                                color: _statusColor(st),
-                                size: 22),
+                                color: _statusColor(st), size: 22),
                           ]),
                         ),
                       );
@@ -613,21 +652,16 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                         onPressed: selectedStatut == statut
                           ? null
                           : () => _changerStatut(
-                              id, selectedStatut,
-                              fromDetail: true),
+                              id, selectedStatut, fromDetail: true),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: selectedStatut ==
-                            'RESOLU'
-                              ? const Color(0xFF2D6A4F)
-                              : TColors.primary,
+                          backgroundColor: selectedStatut == 'RESOLU'
+                            ? const Color(0xFF2D6A4F)
+                            : TColors.primary,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                            TColors.borderLight,
-                          disabledForegroundColor:
-                            TColors.textHint,
+                          disabledBackgroundColor: TColors.borderLight,
+                          disabledForegroundColor: TColors.textHint,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                              BorderRadius.circular(16)),
+                            borderRadius: BorderRadius.circular(16)),
                           elevation: 0,
                         ),
                         child: Text(
@@ -718,8 +752,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
     return Icons.help_outline;
   }
 
-  int get _totalAssigned =>
-    _assigned.length + _resolved.length;
+  int get _totalAssigned => _assigned.length + _resolved.length;
   int get _enCours => _assigned
     .where((s) => s['statut'] == 'EN_COURS').length;
   int get _resolus => _resolved.length;
@@ -742,8 +775,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
         currentIndex: _navIndex,
         selectedItemColor: TColors.primary,
         unselectedItemColor: TColors.grey,
-        backgroundColor: isDark
-          ? TColors.cardDark : TColors.cardLight,
+        backgroundColor: isDark ? TColors.cardDark : TColors.cardLight,
         elevation: 4,
         selectedLabelStyle: const TextStyle(
           fontSize: 11, fontFamily: 'Poppins',
@@ -752,9 +784,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
           fontSize: 11, fontFamily: 'Poppins'),
         onTap: (i) {
           setState(() => _navIndex = i);
-          if (i == 2) {
-            _profileKey.currentState?.refreshStats();
-          }
+          if (i == 2) _profileKey.currentState?.refreshStats();
         },
         items: const [
           BottomNavigationBarItem(
@@ -776,7 +806,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-
           Container(
             color: isDark ? TColors.cardDark : TColors.cardLight,
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -787,8 +816,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Text('👋  ',
-                        style: TextStyle(fontSize: 14)),
+                      const Text('👋  ', style: TextStyle(fontSize: 14)),
                       Text('Salut, Héros !',
                         style: TextStyle(
                           fontSize: 13,
@@ -840,8 +868,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: TColors.primary
-                      .withValues(alpha: 0.35),
+                    color: TColors.primary.withValues(alpha: 0.35),
                     blurRadius: 14,
                     offset: const Offset(0, 5)),
                 ],
@@ -923,7 +950,6 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
   Widget _achievementsTab(bool isDark) {
     return SafeArea(
       child: Column(children: [
-
         Container(
           color: isDark ? TColors.cardDark : TColors.cardLight,
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -990,8 +1016,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                       'pour la Tunisie 🇹🇳',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.white
-                          .withValues(alpha: 0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontFamily: 'Poppins',
                       )),
                   ],
@@ -1068,13 +1093,11 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
         decoration: BoxDecoration(
           color: isDark ? TColors.cardDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: TColors.borderLight, width: 0.5),
+          border: Border.all(color: TColors.borderLight, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
+              blurRadius: 8, offset: const Offset(0, 2)),
           ],
         ),
         child: IntrinsicHeight(
@@ -1101,16 +1124,13 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                           width: 42, height: 42,
                           decoration: BoxDecoration(
                             color: _statusBg(statut),
-                            borderRadius:
-                              BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12)),
                           child: Icon(_catIcon(cat),
-                            size: 20,
-                            color: _statusColor(statut))),
+                            size: 20, color: _statusColor(statut))),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
-                            crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(desc,
                                 overflow: TextOverflow.ellipsis,
@@ -1139,8 +1159,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                             horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: _statusBg(statut),
-                            borderRadius:
-                              BorderRadius.circular(20)),
+                            borderRadius: BorderRadius.circular(20)),
                           child: Text(_statusLabel(statut),
                             style: TextStyle(
                               fontSize: 10,
@@ -1175,8 +1194,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                             )),
                           SizedBox(width: 3),
                           Icon(Icons.arrow_forward_ios,
-                            size: 10,
-                            color: TColors.primary),
+                            size: 10, color: TColors.primary),
                         ]),
                       ]),
                     ],
@@ -1202,13 +1220,11 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
         color: isDark ? TColors.cardDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: TColors.success.withValues(alpha: 0.3),
-          width: 1),
+          color: TColors.success.withValues(alpha: 0.3), width: 1),
         boxShadow: [
           BoxShadow(
             color: TColors.success.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2)),
+            blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: IntrinsicHeight(
@@ -1239,8 +1255,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
-                      crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(desc,
                           overflow: TextOverflow.ellipsis,
@@ -1268,8 +1283,7 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
                               color: _prioColor(prio),
                               shape: BoxShape.circle)),
                           const SizedBox(width: 5),
-                          Text(
-                            'Priorité ${_prioLabel(prio)}',
+                          Text('Priorité ${_prioLabel(prio)}',
                             style: TextStyle(
                               fontSize: 10,
                               color: _prioColor(prio),
@@ -1331,15 +1345,12 @@ class _AgentHomeScreenState extends State<AgentHomeScreen> {
   }
 
   Widget _dividerLine() => const Divider(
-    height: 1, thickness: 0.5,
-    color: TColors.borderLight);
+    height: 1, thickness: 0.5, color: TColors.borderLight);
 
   Widget _statItem(String num, String label, IconData icon) {
     return Expanded(
       child: Column(children: [
-        Icon(icon,
-          color: Colors.white.withValues(alpha: 0.8),
-          size: 18),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 18),
         const SizedBox(height: 4),
         Text(num,
           style: const TextStyle(
