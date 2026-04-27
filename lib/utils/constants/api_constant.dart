@@ -13,6 +13,7 @@ class ApiConstants {
   // ── Signalements ───────────────────────────────────────────
   static const String createSignalement  = '$baseUrl/signalements/CreateSignalement';
   static const String getAllSignalements  = '$baseUrl/signalements/GetAllSignalements';
+  static const String getSignalementById = '$baseUrl/signalements/GetSignalementById';
 
   // ── Categories ─────────────────────────────────────────────
   static const String getAllCategories   = '$baseUrl/categories/GetAllCategories';
@@ -20,4 +21,6 @@ class ApiConstants {
   // ── Users ──────────────────────────────────────────────────
   static const String getAllUsers        = '$baseUrl/users/GetAllUsers';
   static const String getAllAgents       = '$baseUrl/users/GetAllAgents';
+  // ✅ NEW
+  static const String toggleBlockUser    = '$baseUrl/users/ToggleBlock';  // + /:id
 }

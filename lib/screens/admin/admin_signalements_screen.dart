@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_t_hero/utils/constants/colors.dart';
 import 'package:frontend_t_hero/utils/constants/api_constant.dart';
+import 'package:frontend_t_hero/screens/admin/admin_signalement_detail_screen.dart';
 
 class AdminSignalementsScreen extends StatefulWidget {
   const AdminSignalementsScreen({super.key});
@@ -30,10 +31,7 @@ class _AdminSignalementsScreenState
 
   Future<void> _fetchData() async {
     setState(() => _loading = true);
-    await Future.wait([
-      _fetchSignalements(),
-      _fetchAgents(),
-    ]);
+    await Future.wait([_fetchSignalements(), _fetchAgents()]);
     setState(() => _loading = false);
   }
 
@@ -52,8 +50,8 @@ class _AdminSignalementsScreenState
         final data = jsonDecode(response.body);
         setState(() {
           _signalements = (data['data'] as List)
-            .map((e) => e as Map<String, dynamic>)
-            .toList();
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
         });
       }
     } catch (_) {}
@@ -74,22 +72,19 @@ class _AdminSignalementsScreenState
         final data = jsonDecode(response.body);
         setState(() {
           _agents = (data['data'] as List)
-            .map((e) => e as Map<String, dynamic>)
-            .toList();
+              .map((e) => e as Map<String, dynamic>)
+              .toList();
         });
       }
     } catch (_) {}
   }
 
-  Future<void> _assignAgent(String signalementId,
-      String agentId) async {
+  Future<void> _assignAgent(String signalementId, String agentId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token') ?? '';
       final response = await http.put(
-        Uri.parse(
-          '${ApiConstants.baseUrl}/signalements'
-          '/TraiterSignalement/$signalementId'),
+        Uri.parse('${ApiConstants.baseUrl}/signalements/TraiterSignalement/$signalementId'),
         headers: {
           'Content-Type':  'application/json',
           'Authorization': 'Bearer $token',
@@ -111,13 +106,10 @@ class _AdminSignalementsScreenState
   void _snack(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg,
-        style: const TextStyle(
-          fontSize: 13, fontFamily: 'Poppins')),
+      content: Text(msg, style: const TextStyle(fontSize: 13, fontFamily: 'Poppins')),
       backgroundColor: color,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 
@@ -200,23 +192,17 @@ class _AdminSignalementsScreenState
 
   List<Map<String, dynamic>> get _filtered {
     if (_filter == 0) return _signalements;
-    if (_filter == 1) return _signalements
-      .where((s) => s['statut'] == 'EN_ATTENTE').toList();
-    return _signalements
-      .where((s) => s['statut'] == 'RESOLU').toList();
+    if (_filter == 1) return _signalements.where((s) => s['statut'] == 'EN_ATTENTE').toList();
+    return _signalements.where((s) => s['statut'] == 'RESOLU').toList();
   }
 
-  int get _enAttente => _signalements
-    .where((s) => s['statut'] == 'EN_ATTENTE').length;
-  int get _enCours => _signalements
-    .where((s) => s['statut'] == 'EN_COURS').length;
-  int get _resolus => _signalements
-    .where((s) => s['statut'] == 'RESOLU').length;
+  int get _enAttente => _signalements.where((s) => s['statut'] == 'EN_ATTENTE').length;
+  int get _enCours   => _signalements.where((s) => s['statut'] == 'EN_COURS').length;
+  int get _resolus   => _signalements.where((s) => s['statut'] == 'RESOLU').length;
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-      Theme.of(context).brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return SafeArea(
       child: Column(
@@ -227,9 +213,7 @@ class _AdminSignalementsScreenState
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  TColors.primary,
-                  Color(0xFFE53935)],
+                colors: [TColors.primary, Color(0xFFE53935)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -238,32 +222,22 @@ class _AdminSignalementsScreenState
                 bottomRight: Radius.circular(28),
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(
-              16, 16, 16, 20),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
             child: Column(children: [
-
               Row(
-                mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Column(
-                    crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('🚩 Signalements',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          fontFamily: 'Poppins',
-                        )),
-                      Text(
-                        '${_signalements.length} au total',
+                          fontSize: 20, fontWeight: FontWeight.w700,
+                          color: Colors.white, fontFamily: 'Poppins')),
+                      Text('${_signalements.length} au total',
                         style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white70,
-                          fontFamily: 'Poppins',
-                        )),
+                          fontSize: 12, color: Colors.white70,
+                          fontFamily: 'Poppins')),
                     ],
                   ),
                   GestureDetector(
@@ -271,53 +245,28 @@ class _AdminSignalementsScreenState
                     child: Container(
                       width: 36, height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.white
-                          .withValues(alpha: 0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white
-                            .withValues(alpha: 0.3))),
-                      child: const Icon(
-                        Icons.refresh_rounded,
-                        color: Colors.white, size: 17)),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.3))),
+                      child: const Icon(Icons.refresh_rounded, color: Colors.white, size: 17)),
                   ),
                 ],
               ),
-
               const SizedBox(height: 14),
-
-              // Stats strip
               Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12, horizontal: 8),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white
-                    .withValues(alpha: 0.15),
-                  borderRadius:
-                    BorderRadius.circular(16),
-                  border: Border.all(
-                    color: Colors.white
-                      .withValues(alpha: 0.2))),
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.2))),
                 child: Row(children: [
-                  _bannerStat(
-                    '${_signalements.length}',
-                    'Total',
-                    Icons.flag_outlined),
+                  _bannerStat('${_signalements.length}', 'Total',      Icons.flag_outlined),
                   _bannerDiv(),
-                  _bannerStat(
-                    '$_enAttente',
-                    'En attente',
-                    Icons.hourglass_empty_rounded),
+                  _bannerStat('$_enAttente',              'En attente', Icons.hourglass_empty_rounded),
                   _bannerDiv(),
-                  _bannerStat(
-                    '$_enCours',
-                    'En cours',
-                    Icons.bolt_outlined),
+                  _bannerStat('$_enCours',                'En cours',   Icons.bolt_outlined),
                   _bannerDiv(),
-                  _bannerStat(
-                    '$_resolus',
-                    'Résolus',
-                    Icons.check_circle_outline),
+                  _bannerStat('$_resolus',                'Résolus',    Icons.check_circle_outline),
                 ]),
               ),
             ]),
@@ -325,50 +274,33 @@ class _AdminSignalementsScreenState
 
           // ── Filter Tabs ──────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16, 12, 16, 6),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
             child: Container(
               decoration: BoxDecoration(
-                color: isDark
-                  ? TColors.darkContainer
-                  : const Color(0xFFEEEEEE),
+                color: isDark ? TColors.darkContainer : const Color(0xFFEEEEEE),
                 borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.all(4),
               child: Row(
                 children: List.generate(3, (i) => Expanded(
                   child: GestureDetector(
-                    onTap: () =>
-                      setState(() => _filter = i),
+                    onTap: () => setState(() => _filter = i),
                     child: AnimatedContainer(
-                      duration: const Duration(
-                        milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 9),
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
                         color: _filter == i
-                          ? (isDark
-                              ? TColors.cardDark
-                              : Colors.white)
+                          ? (isDark ? TColors.cardDark : Colors.white)
                           : Colors.transparent,
-                        borderRadius:
-                          BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10),
                         border: _filter == i
-                          ? Border.all(
-                              color: TColors.borderLight,
-                              width: 0.5)
+                          ? Border.all(color: TColors.borderLight, width: 0.5)
                           : null),
                       child: Text(_filters[i],
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontFamily: 'Poppins',
-                          fontWeight: _filter == i
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                          color: _filter == i
-                            ? TColors.primary
-                            : TColors.textHint,
-                        )),
+                          fontSize: 13, fontFamily: 'Poppins',
+                          fontWeight: _filter == i ? FontWeight.w600 : FontWeight.w400,
+                          color: _filter == i ? TColors.primary : TColors.textHint)),
                     ),
                   ),
                 )),
@@ -376,61 +308,37 @@ class _AdminSignalementsScreenState
             ),
           ),
 
-          // Count
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              16, 0, 16, 8),
-            child: Text(
-              '${_filtered.length} signalement(s)',
-              style: const TextStyle(
-                fontSize: 12,
-                color: TColors.textHint,
-                fontFamily: 'Poppins',
-              )),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text('${_filtered.length} signalement(s)',
+              style: const TextStyle(fontSize: 12, color: TColors.textHint, fontFamily: 'Poppins')),
           ),
 
           // ── List ─────────────────────────────────────────
           Expanded(
             child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    color: TColors.primary))
+              ? const Center(child: CircularProgressIndicator(color: TColors.primary))
               : _filtered.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment:
-                        MainAxisAlignment.center,
-                      children: [
-                        const Text('🚩',
-                          style: TextStyle(
-                            fontSize: 48)),
-                        const SizedBox(height: 12),
-                        const Text('Aucun signalement',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: TColors.textPrimary,
-                            fontFamily: 'Poppins',
-                          )),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Aucun résultat pour ce filtre',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: TColors.textHint,
-                            fontFamily: 'Poppins',
-                          )),
-                      ],
-                    ))
+                ? Center(child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text('🚩', style: TextStyle(fontSize: 48)),
+                      SizedBox(height: 12),
+                      Text('Aucun signalement',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,
+                          color: TColors.textPrimary, fontFamily: 'Poppins')),
+                      SizedBox(height: 6),
+                      Text('Aucun résultat pour ce filtre',
+                        style: TextStyle(fontSize: 13, color: TColors.textHint, fontFamily: 'Poppins')),
+                    ],
+                  ))
                 : RefreshIndicator(
                     onRefresh: _fetchData,
                     color: TColors.primary,
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       itemCount: _filtered.length,
-                      itemBuilder: (_, i) =>
-                        _card(_filtered[i], isDark),
+                      itemBuilder: (_, i) => _card(_filtered[i], isDark),
                     ),
                   ),
           ),
@@ -440,7 +348,7 @@ class _AdminSignalementsScreenState
   }
 
   Widget _card(Map<String, dynamic> s, bool isDark) {
-    final statut       = s['statut'] ?? 'EN_ATTENTE';
+    final statut       = s['statut']   ?? 'EN_ATTENTE';
     final prio         = s['priorite'] ?? 'FAIBLE';
     final agentObj     = s['agent'];
     final isUnassigned = agentObj == null;
@@ -451,230 +359,158 @@ class _AdminSignalementsScreenState
     final time         = _timeAgo(s['createdAt']);
     final id           = s['_id'] ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: isDark ? TColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: TColors.borderLight, width: 0.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(children: [
-
-        // Top colored strip
-        Container(
-          padding: const EdgeInsets.fromLTRB(
-            14, 12, 14, 10),
-          decoration: BoxDecoration(
-            color: _statusBg(statut),
-            borderRadius: const BorderRadius.only(
-              topLeft:  Radius.circular(16),
-              topRight: Radius.circular(16))),
-          child: Row(children: [
-            Text(_statusEmoji(statut),
-              style: const TextStyle(fontSize: 14)),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(desc,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: isDark
-                    ? TColors.textWhite
-                    : TColors.textPrimary,
-                  fontFamily: 'Poppins',
-                ))),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white
-                  .withValues(alpha: 0.7),
-                borderRadius:
-                  BorderRadius.circular(20)),
-              child: Text(_statusLabel(statut),
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: _statusColor(statut),
-                  fontFamily: 'Poppins',
-                ))),
-          ]),
+    return GestureDetector(
+      // ✅ Tap card → navigate to detail screen
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AdminSignalementDetailScreen(signalement: s),
         ),
+      ).then((_) => _fetchData()),
 
-        // Body
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            14, 10, 14, 12),
-          child: Column(
-            crossAxisAlignment:
-              CrossAxisAlignment.start,
-            children: [
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: isDark ? TColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: TColors.borderLight, width: 0.5),
+          boxShadow: [BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Column(children: [
 
-              // Info row
-              Row(children: [
-                const Icon(Icons.person_outline,
-                  size: 13, color: TColors.textHint),
-                const SizedBox(width: 4),
-                Text(citoyenNom,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: TColors.textHint,
-                    fontFamily: 'Poppins',
-                  )),
-                const SizedBox(width: 10),
-                const Icon(Icons.category_outlined,
-                  size: 13, color: TColors.textHint),
-                const SizedBox(width: 4),
-                Text(catNom,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: TColors.textHint,
-                    fontFamily: 'Poppins',
-                  )),
-                const Spacer(),
-                Text(time,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: TColors.textHint,
-                    fontFamily: 'Poppins',
-                  )),
-              ]),
+          // Top colored strip
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            decoration: BoxDecoration(
+              color: _statusBg(statut),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16), topRight: Radius.circular(16))),
+            child: Row(children: [
+              Text(_statusEmoji(statut), style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(desc,
+                  overflow: TextOverflow.ellipsis, maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700,
+                    color: isDark ? TColors.textWhite : TColors.textPrimary,
+                    fontFamily: 'Poppins'))),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20)),
+                child: Text(_statusLabel(statut),
+                  style: TextStyle(
+                    fontSize: 10, fontWeight: FontWeight.w700,
+                    color: _statusColor(statut), fontFamily: 'Poppins'))),
+            ]),
+          ),
 
-              const SizedBox(height: 8),
+          // Body
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
 
-              // Priority + agent row
-              Row(
-                mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
-                children: [
+                Row(children: [
+                  const Icon(Icons.person_outline, size: 13, color: TColors.textHint),
+                  const SizedBox(width: 4),
+                  Text(citoyenNom,
+                    style: const TextStyle(fontSize: 12, color: TColors.textHint, fontFamily: 'Poppins')),
+                  const SizedBox(width: 10),
+                  const Icon(Icons.category_outlined, size: 13, color: TColors.textHint),
+                  const SizedBox(width: 4),
+                  Text(catNom,
+                    style: const TextStyle(fontSize: 12, color: TColors.textHint, fontFamily: 'Poppins')),
+                  const Spacer(),
+                  Text(time,
+                    style: const TextStyle(fontSize: 11, color: TColors.textHint, fontFamily: 'Poppins')),
+                ]),
 
-                  // Priority
-                  Row(children: [
-                    Container(
-                      width: 8, height: 8,
-                      decoration: BoxDecoration(
-                        color: _prioColor(prio),
-                        shape: BoxShape.circle)),
-                    const SizedBox(width: 5),
-                    Text(
-                      'Priorité ${_prioLabel(prio)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _prioColor(prio),
-                        fontFamily: 'Poppins',
-                      )),
-                  ]),
+                const SizedBox(height: 8),
 
-                  // Agent chip
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: isUnassigned
-                        ? TColors.warningLight
-                        : TColors.infoLight,
-                      borderRadius:
-                        BorderRadius.circular(20)),
-                    child: Row(children: [
-                      Icon(
-                        isUnassigned
-                          ? Icons.person_off_outlined
-                          : Icons.engineering_outlined,
-                        size: 11,
-                        color: isUnassigned
-                          ? TColors.warning
-                          : TColors.info),
-                      const SizedBox(width: 4),
-                      Text(
-                        isUnassigned
-                          ? 'Non assigné'
-                          : agentNom,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(children: [
+                      Container(
+                        width: 8, height: 8,
+                        decoration: BoxDecoration(color: _prioColor(prio), shape: BoxShape.circle)),
+                      const SizedBox(width: 5),
+                      Text('Priorité ${_prioLabel(prio)}',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isUnassigned
-                            ? TColors.warning
-                            : TColors.info,
-                          fontFamily: 'Poppins',
-                        )),
+                          fontSize: 11, fontWeight: FontWeight.w600,
+                          color: _prioColor(prio), fontFamily: 'Poppins')),
                     ]),
-                  ),
-                ],
-              ),
-
-              // Assign button
-              if (statut != 'RESOLU') ...[
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: GestureDetector(
-                    onTap: () =>
-                      _showAssignDialog(id),
-                    child: Container(
-                      padding:
-                        const EdgeInsets.symmetric(
-                          vertical: 9),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isUnassigned
-                          ? TColors.primary
-                          : TColors.info
-                              .withValues(alpha: 0.1),
-                        borderRadius:
-                          BorderRadius.circular(10),
-                        border: isUnassigned
-                          ? null
-                          : Border.all(
-                              color: TColors.info
-                                .withValues(alpha: 0.4),
-                              width: 1)),
-                      child: Row(
-                        mainAxisAlignment:
-                          MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isUnassigned
-                              ? Icons.person_add_outlined
-                              : Icons
-                                  .swap_horiz_rounded,
-                            size: 15,
-                            color: isUnassigned
-                              ? Colors.white
-                              : TColors.info),
-                          const SizedBox(width: 6),
-                          Text(
-                            isUnassigned
-                              ? 'Assigner un agent'
-                              : 'Réassigner',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                FontWeight.w700,
-                              color: isUnassigned
-                                ? Colors.white
-                                : TColors.info,
-                              fontFamily: 'Poppins',
-                            )),
-                        ],
+                        color: isUnassigned ? TColors.warningLight : TColors.infoLight,
+                        borderRadius: BorderRadius.circular(20)),
+                      child: Row(children: [
+                        Icon(
+                          isUnassigned ? Icons.person_off_outlined : Icons.engineering_outlined,
+                          size: 11,
+                          color: isUnassigned ? TColors.warning : TColors.info),
+                        const SizedBox(width: 4),
+                        Text(
+                          isUnassigned ? 'Non assigné' : agentNom,
+                          style: TextStyle(
+                            fontSize: 10, fontWeight: FontWeight.w600,
+                            color: isUnassigned ? TColors.warning : TColors.info,
+                            fontFamily: 'Poppins')),
+                      ]),
+                    ),
+                  ],
+                ),
+
+                if (statut != 'RESOLU') ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: GestureDetector(
+                      // stop this tap from also triggering card's onTap
+                      onTap: () => _showAssignDialog(id),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 9),
+                        decoration: BoxDecoration(
+                          color: isUnassigned
+                            ? TColors.primary
+                            : TColors.info.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: isUnassigned
+                            ? null
+                            : Border.all(color: TColors.info.withValues(alpha: 0.4), width: 1)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isUnassigned ? Icons.person_add_outlined : Icons.swap_horiz_rounded,
+                              size: 15,
+                              color: isUnassigned ? Colors.white : TColors.info),
+                            const SizedBox(width: 6),
+                            Text(
+                              isUnassigned ? 'Assigner un agent' : 'Réassigner',
+                              style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w700,
+                                color: isUnassigned ? Colors.white : TColors.info,
+                                fontFamily: 'Poppins')),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 
@@ -684,23 +520,15 @@ class _AdminSignalementsScreenState
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(children: [
             Text('🦸 ', style: TextStyle(fontSize: 18)),
             Text('Assigner un agent',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Poppins',
-              )),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'Poppins')),
           ]),
           content: _agents.isEmpty
             ? const Text('Aucun agent disponible',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: TColors.textHint,
-                  fontFamily: 'Poppins'))
+                style: TextStyle(fontSize: 14, color: TColors.textHint, fontFamily: 'Poppins'))
             : SizedBox(
                 width: double.maxFinite,
                 child: ListView(
@@ -710,67 +538,40 @@ class _AdminSignalementsScreenState
                     final agentNom = agent['nom'] ?? '—';
                     final sel = selectedAgentId == agentId;
                     return GestureDetector(
-                      onTap: () =>
-                        setD(() => selectedAgentId = agentId),
+                      onTap: () => setD(() => selectedAgentId = agentId),
                       child: AnimatedContainer(
-                        duration: const Duration(
-                          milliseconds: 150),
-                        margin: const EdgeInsets.only(
-                          bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 12),
+                        duration: const Duration(milliseconds: 150),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: sel
-                            ? TColors.primaryLight
-                            : TColors.light,
-                          borderRadius:
-                            BorderRadius.circular(12),
+                          color: sel ? TColors.primaryLight : TColors.light,
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: sel
-                              ? TColors.primary
-                              : TColors.borderLight,
+                            color: sel ? TColors.primary : TColors.borderLight,
                             width: sel ? 1.5 : 0.5)),
                         child: Row(children: [
                           Container(
                             width: 36, height: 36,
                             decoration: BoxDecoration(
-                              color: sel
-                                ? TColors.primaryLight
-                                : TColors.infoLight,
+                              color: sel ? TColors.primaryLight : TColors.infoLight,
                               shape: BoxShape.circle),
                             child: Center(
                               child: Text(
-                                agentNom.isNotEmpty
-                                  ? agentNom[0]
-                                      .toUpperCase()
-                                  : '?',
+                                agentNom.isNotEmpty ? agentNom[0].toUpperCase() : '?',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight:
-                                    FontWeight.w700,
-                                  color: sel
-                                    ? TColors.primary
-                                    : TColors.info,
-                                  fontFamily: 'Poppins',
-                                )))),
+                                  fontSize: 14, fontWeight: FontWeight.w700,
+                                  color: sel ? TColors.primary : TColors.info,
+                                  fontFamily: 'Poppins')))),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(agentNom,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: sel
-                                  ? FontWeight.w700
-                                  : FontWeight.w400,
-                                color: sel
-                                  ? TColors.primary
-                                  : TColors.textPrimary,
-                                fontFamily: 'Poppins',
-                              ))),
+                                fontWeight: sel ? FontWeight.w700 : FontWeight.w400,
+                                color: sel ? TColors.primary : TColors.textPrimary,
+                                fontFamily: 'Poppins'))),
                           if (sel)
-                            const Icon(
-                              Icons.check_circle_rounded,
-                              color: TColors.primary,
-                              size: 20),
+                            const Icon(Icons.check_circle_rounded, color: TColors.primary, size: 20),
                         ]),
                       ),
                     );
@@ -781,64 +582,44 @@ class _AdminSignalementsScreenState
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Annuler',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: TColors.textHint,
-                  fontFamily: 'Poppins'))),
+                style: TextStyle(fontSize: 14, color: TColors.textHint, fontFamily: 'Poppins'))),
             ElevatedButton(
               onPressed: selectedAgentId != null
                 ? () {
                     Navigator.pop(context);
-                    _assignAgent(
-                      signalementId, selectedAgentId!);
+                    _assignAgent(signalementId, selectedAgentId!);
                   }
                 : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: TColors.primary,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                  TColors.borderLight,
-                shape: RoundedRectangleBorder(
-                  borderRadius:
-                    BorderRadius.circular(12)),
+                disabledBackgroundColor: TColors.borderLight,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 elevation: 0),
               child: const Text('Confirmer',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontFamily: 'Poppins'))),
+                style: TextStyle(fontSize: 14, fontFamily: 'Poppins'))),
           ],
         ),
       ),
     );
   }
 
-  Widget _bannerStat(String num, String label,
-      IconData icon) {
+  Widget _bannerStat(String num, String label, IconData icon) {
     return Expanded(
       child: Column(children: [
-        Icon(icon,
-          color: Colors.white.withValues(alpha: 0.8),
-          size: 14),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 14),
         const SizedBox(height: 3),
         Text(num,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-            fontFamily: 'Poppins',
-          )),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+            color: Colors.white, fontFamily: 'Poppins')),
         const SizedBox(height: 1),
         Text(label,
-          style: TextStyle(
-            fontSize: 8,
-            color: Colors.white.withValues(alpha: 0.75),
-            fontFamily: 'Poppins',
-          )),
+          style: TextStyle(fontSize: 8,
+            color: Colors.white.withValues(alpha: 0.75), fontFamily: 'Poppins')),
       ]),
     );
   }
 
   Widget _bannerDiv() => Container(
-    width: 1, height: 28,
-    color: Colors.white.withValues(alpha: 0.2));
+    width: 1, height: 28, color: Colors.white.withValues(alpha: 0.2));
 }
