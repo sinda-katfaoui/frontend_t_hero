@@ -252,109 +252,124 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                   16, 16, 16, 20),
                 child: Column(children: [
 
-                  // Top row
+                  // ── TOP ROW (FIXED) ──────────────────────
                   Row(
                     mainAxisAlignment:
                       MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                        children: [
-                          const Text('Tableau de bord',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.white70,
-                              fontFamily: 'Poppins',
-                            )),
-                          Text(_adminName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              fontFamily: 'Poppins',
-                            )),
-                        ],
-                      ),
-                      Row(children: [
-
-                        // Admin badge
-                        Container(
-                          padding:
-                            const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white
-                              .withValues(alpha: 0.2),
-                            borderRadius:
-                              BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white
-                                .withValues(alpha: 0.3))),
-                          child: const Row(children: [
-                            Icon(Icons.shield_outlined,
-                              size: 13,
-                              color: Colors.white),
-                            SizedBox(width: 4),
-                            Text('Administrateur',
+                      // LEFT: title + name — wrapped in Flexible so it
+                      // shrinks when the right-side buttons need space.
+                      Flexible(
+                        child: Column(
+                          crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                          children: [
+                            const Text('Tableau de bord',
                               style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white70,
                                 fontFamily: 'Poppins',
                               )),
-                          ]),
+                            Text(
+                              _adminName,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                fontFamily: 'Poppins',
+                              )),
+                          ],
                         ),
+                      ),
 
-                        const SizedBox(width: 8),
+                      const SizedBox(width: 8),
 
-                        // Profile button
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                const AdminProfileScreen())),
-                          child: Container(
-                            width: 36, height: 36,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black
-                                    .withValues(alpha: 0.15),
-                                  blurRadius: 6,
-                                  offset:
-                                    const Offset(0, 2)),
-                              ]),
-                            child: const Icon(
-                              Icons.person_outline,
-                              color: TColors.primary,
-                              size: 18)),
-                        ),
+                      // RIGHT: badge + profile + logout — fixed size
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
 
-                        const SizedBox(width: 8),
-
-                        // Logout button
-                        GestureDetector(
-                          onTap: _logout,
-                          child: Container(
-                            width: 36, height: 36,
+                          // Admin badge
+                          Container(
+                            padding:
+                              const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white
                                 .withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
+                              borderRadius:
+                                BorderRadius.circular(20),
                               border: Border.all(
                                 color: Colors.white
                                   .withValues(alpha: 0.3))),
-                            child: const Icon(
-                              Icons.logout_rounded,
-                              color: Colors.white,
-                              size: 17)),
-                        ),
-                      ]),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.shield_outlined,
+                                  size: 13,
+                                  color: Colors.white),
+                                SizedBox(width: 4),
+                                Text('Admin',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'Poppins',
+                                  )),
+                              ]),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          // Profile button
+                          GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                  const AdminProfileScreen())),
+                            child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black
+                                      .withValues(alpha: 0.15),
+                                    blurRadius: 6,
+                                    offset:
+                                      const Offset(0, 2)),
+                                ]),
+                              child: const Icon(
+                                Icons.person_outline,
+                                color: TColors.primary,
+                                size: 18)),
+                          ),
+
+                          const SizedBox(width: 8),
+
+                          // Logout button
+                          GestureDetector(
+                            onTap: _logout,
+                            child: Container(
+                              width: 36, height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white
+                                  .withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white
+                                    .withValues(alpha: 0.3))),
+                              child: const Icon(
+                                Icons.logout_rounded,
+                                color: Colors.white,
+                                size: 17)),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
 
